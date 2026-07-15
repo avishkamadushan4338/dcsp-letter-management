@@ -1,0 +1,843 @@
+/* ==========================================================================
+   Design tokens
+   Mobile-first, fluid, adaptive design system for the DCS Letter Management
+   System. Scales continuously from small phones to ultra-wide/4K+ desktop
+   monitors using clamp()/min()/max() instead of a large breakpoint list.
+   Single fixed cream/maroon/gold theme - does not follow the OS dark-mode
+   preference. Still respects the user's reduced-motion preference.
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* Brand */
+  --brand-maroon: #4a0918;
+  --brand-maroon-strong: #6e1024;
+  --brand-gold: #c79a2b;
+
+  /* Semantic */
+  --success: #2e7d32;
+  --success-bg: #e2f2e3;
+  --warning: #96650a;
+  --warning-bg: #fbe9cf;
+  --info: #1d5a9e;
+  --info-bg: #dfeaf8;
+  --error: #b3261e;
+  --error-bg: #fbe2e0;
+
+  /* Status badges - one distinct color per letter lifecycle stage */
+  --status-issued: #5c554c;
+  --status-issued-bg: #e7e1dc;
+  --status-pending-review: #96650a;
+  --status-pending-review-bg: #fbe9cf;
+  --status-created: #1d5a9e;
+  --status-created-bg: #dfeaf8;
+  --status-sent-subject: #b3590a;
+  --status-sent-subject-bg: #fde8d2;
+  --status-with-subject: #8a6a1f;
+  --status-with-subject-bg: #f6ecd3;
+  --status-sent-relevant: #12796f;
+  --status-sent-relevant-bg: #d7f2ef;
+  --status-with-relevant: #6a3fa0;
+  --status-with-relevant-bg: #ece3f8;
+  --status-action-taken: #2e7d32;
+  --status-action-taken-bg: #e2f2e3;
+  --status-closed: #45536b;
+  --status-closed-bg: #e3e6ea;
+
+  /* Surfaces / text (light) */
+  --color-bg: #f5efe6;
+  --color-surface: #fcfbfa;
+  --color-surface-alt: #e7e1dc;
+  --color-text: #201c17;
+  --color-text-muted: #5c554c;
+  --color-border: #d9d2c7;
+  --color-focus: #1d5a9e;
+
+  /* Fluid spacing scale */
+  --space-1: clamp(0.25rem, 0.22rem + 0.15vw, 0.375rem);
+  --space-2: clamp(0.5rem, 0.44rem + 0.3vw, 0.75rem);
+  --space-3: clamp(0.75rem, 0.66rem + 0.4vw, 1rem);
+  --space-4: clamp(1rem, 0.88rem + 0.55vw, 1.5rem);
+  --space-5: clamp(1.5rem, 1.3rem + 0.9vw, 2.25rem);
+  --space-6: clamp(2rem, 1.7rem + 1.2vw, 3rem);
+
+  /* Fluid type scale (min 1rem so mobile inputs never trigger iOS zoom) */
+  --font-size-sm: clamp(0.8125rem, 0.78rem + 0.15vw, 0.875rem);
+  --font-size-base: clamp(1rem, 0.97rem + 0.15vw, 1.0625rem);
+  --font-size-md: clamp(1.0625rem, 1rem + 0.3vw, 1.1875rem);
+  --font-size-lg: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+  --font-size-xl: clamp(1.5rem, 1.3rem + 0.9vw, 2rem);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --shadow-sm: 0 1px 2px rgba(20, 15, 10, 0.06), 0 1px 1px rgba(20, 15, 10, 0.04);
+  --shadow-md: 0 4px 16px rgba(20, 15, 10, 0.08);
+
+  --max-content: 72rem;
+  --max-form: 40rem;
+  --touch-target: 2.75rem;
+
+  --font-sans: 'Noto Sans Sinhala', 'Segoe UI', system-ui, -apple-system, 'Iskoola Pota', Arial, sans-serif;
+}
+
+/* ==========================================================================
+   Reset & base
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+svg {
+  max-width: 100%;
+  display: block;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   Accessibility helpers
+   ========================================================================== */
+
+.skip-link {
+  position: absolute;
+  top: -3rem;
+  left: var(--space-2);
+  z-index: 100;
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: var(--space-2);
+}
+
+a,
+button,
+input,
+select,
+textarea,
+[tabindex] {
+  outline-offset: 2px;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ==========================================================================
+   Header / nav
+   ========================================================================== */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  background: var(--brand-maroon);
+  color: #fff;
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-header h1 {
+  font-size: var(--font-size-lg);
+  margin: 0;
+  min-width: 0;
+}
+
+.app-header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.app-header nav a,
+.app-header nav button,
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  color: #fff;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.app-header nav a:hover,
+.app-header nav button:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.app-header nav a:active,
+.app-header nav button:active {
+  transform: translateY(1px);
+}
+
+/* ==========================================================================
+   Layout
+   ========================================================================== */
+
+main {
+  width: min(100% , var(--max-content));
+  margin-inline: auto;
+  padding: var(--space-4);
+}
+
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: var(--space-4);
+}
+
+.auth-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-5);
+  width: min(100%, 24rem);
+  text-align: center;
+}
+
+.auth-card .subtitle {
+  color: var(--color-text-muted);
+  margin-top: -0.5rem;
+  font-size: var(--font-size-sm);
+}
+
+/* ==========================================================================
+   Forms
+   ========================================================================== */
+
+form label {
+  display: block;
+  margin-top: var(--space-3);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+form input,
+form select,
+form textarea {
+  width: 100%;
+  min-height: var(--touch-target);
+  padding: 0.55rem 0.7rem;
+  margin-top: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+}
+
+form textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+form input:focus-visible,
+form select:focus-visible,
+form textarea:focus-visible {
+  border-color: var(--color-focus);
+}
+
+form button[type='submit'],
+button#generateSheetBtn,
+button#printBtn {
+  margin-top: var(--space-4);
+  min-height: var(--touch-target);
+  background: var(--brand-maroon);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 1.4rem;
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+form button[type='submit']:hover,
+button#generateSheetBtn:hover,
+button#printBtn:hover {
+  background: var(--brand-maroon-strong);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error,
+.status-message {
+  min-height: 1.2em;
+  color: var(--error);
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}
+
+/* Routing choice (Direct / Via Admin) on subject-officer-new-letter.html -
+   plain radio inputs, not the touch-target-sized full-width controls the
+   generic `form input` rule targets. */
+.radio-group {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.radio-group legend {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  padding: 0 var(--space-1);
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 400;
+  margin-top: var(--space-2);
+}
+
+.radio-option input[type='radio'] {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+}
+
+/* ==========================================================================
+   Dashboard: filters + table
+   ========================================================================== */
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  align-items: center;
+}
+
+.filter-bar input,
+.filter-bar select {
+  flex: 1 1 12rem;
+  min-height: var(--touch-target);
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+}
+
+.filter-bar button {
+  flex: 0 0 auto;
+  min-height: var(--touch-target);
+  background: var(--brand-maroon);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1.25rem;
+  cursor: pointer;
+  font-size: var(--font-size-base);
+}
+
+.filter-bar button:hover {
+  background: var(--brand-maroon-strong);
+}
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-md);
+}
+
+.letters-table {
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+  background: var(--color-surface);
+  font-size: var(--font-size-sm);
+}
+
+.letters-table th,
+.letters-table td {
+  border: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+}
+
+.letters-table th {
+  background: var(--color-surface-alt);
+  position: sticky;
+  top: 0;
+}
+
+.letters-table tbody tr:hover {
+  background: var(--color-surface-alt);
+}
+
+/* Below ~640px the table collapses into a stacked card list: each <tr>
+   becomes a card and each <td> becomes a label/value row using the
+   data-label attribute rendered by letters.js, so no data or column is
+   ever clipped or force-scrolled on a small phone. */
+@media (max-width: 640px) {
+  .table-scroll {
+    overflow-x: visible;
+  }
+
+  .letters-table {
+    min-width: 0;
+  }
+
+  .letters-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .letters-table,
+  .letters-table tbody,
+  .letters-table tr,
+  .letters-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .letters-table tr {
+    margin-bottom: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .letters-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    text-align: right;
+    border: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .letters-table td:last-child {
+    border-bottom: none;
+  }
+
+  .letters-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    text-align: left;
+    color: var(--color-text-muted);
+  }
+}
+
+.letters-table button {
+  min-height: 2.25rem;
+  background: var(--brand-maroon);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.letters-table button:hover {
+  background: var(--brand-maroon-strong);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.status-issued {
+  background: var(--status-issued-bg);
+  color: var(--status-issued);
+}
+
+.status-pending_review {
+  background: var(--status-pending-review-bg);
+  color: var(--status-pending-review);
+}
+
+.status-created {
+  background: var(--status-created-bg);
+  color: var(--status-created);
+}
+
+.status-sent_to_subject {
+  background: var(--status-sent-subject-bg);
+  color: var(--status-sent-subject);
+}
+
+.status-with_subject_officer {
+  background: var(--status-with-subject-bg);
+  color: var(--status-with-subject);
+}
+
+.status-sent_to_relevant {
+  background: var(--status-sent-relevant-bg);
+  color: var(--status-sent-relevant);
+}
+
+.status-with_relevant_officer {
+  background: var(--status-with-relevant-bg);
+  color: var(--status-with-relevant);
+}
+
+.status-action_taken {
+  background: var(--status-action-taken-bg);
+  color: var(--status-action-taken);
+}
+
+.status-closed {
+  background: var(--status-closed-bg);
+  color: var(--status-closed);
+}
+
+.pending-note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+}
+
+/* ==========================================================================
+   Cards: letter form / details / actions
+   ========================================================================== */
+
+.letter-form,
+.letter-details-card,
+.actions-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.letter-form {
+  max-width: var(--max-form);
+  margin-inline: auto;
+}
+
+.letter-number-display {
+  margin: var(--space-1) 0 0;
+  padding: 0.55rem 0.7rem;
+  min-height: var(--touch-target);
+  display: flex;
+  align-items: center;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--brand-maroon);
+  overflow-wrap: anywhere;
+}
+
+.officer-page {
+  max-width: var(--max-form);
+}
+
+/* Letter detail list: a container query lets it switch from a stacked
+   label/value layout (phones) to a two-column term/definition layout
+   (tablet and up) based on the card's own width, not the viewport, so it
+   still lays out correctly inside a narrower sidebar or a split view. */
+.letter-details-card {
+  container-type: inline-size;
+  container-name: details;
+}
+
+.letter-details {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin: 0;
+}
+
+.letter-details dt {
+  font-weight: 600;
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+.letter-details dd {
+  margin: 0 0 var(--space-1) 0;
+  overflow-wrap: anywhere;
+}
+
+@container details (min-width: 30rem) {
+  .letter-details {
+    grid-template-columns: max-content 1fr;
+    column-gap: var(--space-4);
+    align-items: baseline;
+  }
+
+  .letter-details dt {
+    grid-column: 1;
+    margin-top: var(--space-2);
+  }
+
+  .letter-details dd {
+    grid-column: 2;
+    margin-top: var(--space-2);
+    margin-bottom: 0;
+  }
+}
+
+.actions-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.actions-card button {
+  min-height: var(--touch-target);
+  background: var(--brand-maroon);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 1.1rem;
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  transition: background-color 0.15s ease;
+}
+
+.actions-card button:hover {
+  background: var(--brand-maroon-strong);
+}
+
+.subject-officer-display {
+  margin: var(--space-1) 0 0;
+  padding: 0.55rem 0.7rem;
+  min-height: var(--touch-target);
+  display: flex;
+  align-items: center;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+  overflow-wrap: anywhere;
+}
+
+.reassign-block {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.reassign-block label {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.reassign-block select {
+  flex: 1 1 12rem;
+  min-height: var(--touch-target);
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+}
+
+.reassign-block textarea {
+  flex-basis: 100%;
+  min-height: 4rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  resize: vertical;
+}
+
+/* ==========================================================================
+   Dialogs (native <dialog> - e.g. the "change Subject Officer" panel)
+   ========================================================================== */
+
+dialog {
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  width: min(92vw, 28rem);
+  max-height: min(85vh, 40rem);
+  overflow-y: auto;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+}
+
+dialog.dialog-wide {
+  width: min(92vw, 42rem);
+}
+
+dialog::backdrop {
+  background: rgba(10, 8, 6, 0.55);
+}
+
+dialog h2 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+
+dialog h3,
+.letter-details-card h3 {
+  margin: var(--space-4) 0 var(--space-1);
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+}
+
+.action-taken-text {
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.reassign-history {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.reassign-history li {
+  margin-bottom: var(--space-1);
+  overflow-wrap: anywhere;
+}
+
+.reassign-history .reassign-date {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.dialog-actions button {
+  margin-top: 0;
+}
+
+.dialog-actions button[type='button'] {
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.actions-card textarea {
+  flex-basis: 100%;
+  width: 100%;
+  min-height: 6rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  resize: vertical;
+}

@@ -1,0 +1,27 @@
+/* Local Sinhala font. Place the actual file at
+   public/fonts/NotoSansSinhala-Regular.woff2 (see public/fonts/README.md) -
+   falls back to a CDN copy and then system fonts if it's missing. */
+@font-face {
+  font-family: 'Noto Sans Sinhala';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../fonts/NotoSansSinhala-Regular.woff2') format('woff2');
+}
+
+html[lang='si'] body,
+html[lang='si'] input,
+html[lang='si'] textarea,
+html[lang='si'] select,
+html[lang='si'] button {
+  font-family: 'Noto Sans Sinhala', 'Iskoola Pota', 'Segoe UI', sans-serif;
+  /* Sinhala glyphs run taller than Latin; extra line-height keeps
+     bilingual paragraphs (Sinhala + English letter numbers) legible. */
+  line-height: 1.8;
+  letter-spacing: 0.01em;
+}
+
+html[lang='en'] body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  line-height: 1.5;
+}
