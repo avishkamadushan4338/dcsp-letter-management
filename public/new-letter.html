@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#4a0918" />
+  <title>DCS Letter Management - New Letter</title>
+  <link rel="stylesheet" href="css/sinhala.css" />
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main" data-i18n="skipToContent">Skip to main content</a>
+  <header class="app-header">
+    <h1 data-i18n="newLetterTitle">New Letter</h1>
+    <nav>
+      <a href="dashboard.html" data-i18n="backToDashboard">Back to Dashboard</a>
+      <button class="lang-toggle" data-lang-toggle type="button">සිංහල / English</button>
+    </nav>
+  </header>
+
+  <main id="main">
+    <form id="newLetterForm" class="letter-form">
+      <label for="division" data-i18n="division">Division</label>
+      <select id="division" required>
+        <option value="" data-i18n="selectDivision">Select division</option>
+      </select>
+
+      <label data-i18n="letterNumber">Letter No.</label>
+      <p id="letterNumberDisplay" class="letter-number-display">-</p>
+
+      <label for="subject" data-i18n="subject">Subject</label>
+      <input type="text" id="subject" />
+
+      <label for="senderName" data-i18n="sender">Sender</label>
+      <input type="text" id="senderName" />
+
+      <label for="receivedDate" data-i18n="receivedDate">Received Date</label>
+      <input type="date" id="receivedDate" />
+
+      <label data-i18n="subjectOfficer">Subject Officer</label>
+      <p id="subjectOfficerDisplay" class="subject-officer-display">-</p>
+
+      <label for="relevantOfficer" data-i18n="relevantOfficer">Relevant Officer</label>
+      <select id="relevantOfficer" required></select>
+
+      <button type="submit" data-i18n="submitLetter">Submit &amp; Send Links</button>
+      <p id="formStatus" class="status-message" role="status" aria-live="polite"></p>
+    </form>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/letters.js"></script>
+  <script src="js/new-letter.js"></script>
+</body>
+</html>
