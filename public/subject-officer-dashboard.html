@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#4a0918" />
+  <title>DCS Letter Management - Subject Officer Dashboard</title>
+  <link rel="stylesheet" href="css/sinhala.css" />
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main" data-i18n="skipToContent">Skip to main content</a>
+  <header class="app-header">
+    <h1 data-i18n="subjectOfficerDashboardTitle">My Letters - Subject Officer</h1>
+    <nav>
+      <a href="subject-officer-new-letter.html" data-i18n="newLetter">New Letter</a>
+      <button id="addOfficerNavBtn" type="button" data-i18n="addOfficerTitle">Add Member</button>
+      <button class="lang-toggle" data-lang-toggle type="button">සිංහල / English</button>
+      <button id="logoutBtn" data-i18n="logout">Logout</button>
+    </nav>
+  </header>
+
+  <dialog id="addOfficerDialog">
+    <form id="addOfficerForm">
+      <h2 data-i18n="addOfficerTitle">Add Member</h2>
+
+      <label for="officerDivision" data-i18n="division">Division</label>
+      <select id="officerDivision">
+        <option value="" data-i18n="selectDivision">Select division</option>
+      </select>
+
+      <label for="officerPosition" data-i18n="position">Position</label>
+      <input type="text" id="officerPosition" />
+
+      <label for="officerNameInput" data-i18n="officerName">Name</label>
+      <input type="text" id="officerNameInput" required />
+
+      <label for="officerEmailInput" data-i18n="officerEmail">Email</label>
+      <input type="email" id="officerEmailInput" required />
+
+      <div class="dialog-actions">
+        <button type="submit" data-i18n="addOfficerBtn">Add Member</button>
+        <button type="button" id="addOfficerCancelBtn" data-i18n="cancel">Cancel</button>
+      </div>
+      <p id="officerFormStatus" class="status-message" role="status" aria-live="polite"></p>
+    </form>
+  </dialog>
+
+  <main id="main">
+    <form id="filterForm" class="filter-bar">
+      <input type="text" id="search" data-i18n-placeholder="searchPlaceholder" placeholder="Search..." />
+      <select id="filterStatus">
+        <option value="" data-i18n="allStatuses">All statuses</option>
+        <option value="pending_review">pending_review</option>
+        <option value="created">created</option>
+        <option value="sent_to_subject">sent_to_subject</option>
+        <option value="with_subject_officer">with_subject_officer</option>
+        <option value="sent_to_relevant">sent_to_relevant</option>
+        <option value="with_relevant_officer">with_relevant_officer</option>
+        <option value="action_taken">action_taken</option>
+        <option value="closed">closed</option>
+      </select>
+      <button type="submit" data-i18n="filter">Filter</button>
+    </form>
+
+    <div class="table-scroll">
+      <table id="lettersTable" class="letters-table">
+        <thead>
+          <tr>
+            <th data-i18n="letterNumber">Letter No.</th>
+            <th data-i18n="subject">Subject</th>
+            <th data-i18n="sender">Sender</th>
+            <th data-i18n="relevantOfficer">Relevant Officer</th>
+            <th data-i18n="status">Status</th>
+            <th data-i18n="received">Received</th>
+            <th data-i18n="sentToRelevantOfficer">Sent to Relevant Officer</th>
+          </tr>
+        </thead>
+        <tbody id="lettersTableBody"></tbody>
+      </table>
+    </div>
+    <p id="emptyState" data-i18n="noLetters" hidden>No letters found.</p>
+    <p id="listStatus" class="status-message" role="status" aria-live="polite"></p>
+
+    <section aria-labelledby="officersListHeading">
+      <h2 id="officersListHeading" data-i18n="officersListTitle">Officers</h2>
+      <div class="table-scroll">
+        <table id="officersTable" class="letters-table">
+          <thead>
+            <tr>
+              <th data-i18n="officerName">Name</th>
+              <th data-i18n="officerEmail">Email</th>
+              <th data-i18n="position">Position</th>
+              <th data-i18n="division">Division</th>
+              <th data-i18n="actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="officersTableBody"></tbody>
+        </table>
+      </div>
+      <p id="officersEmptyState" data-i18n="noOfficers" hidden>No members added yet.</p>
+    </section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/letters.js"></script>
+  <script>
+    function formatTimestamp(value) {
+      if (!value) return null;
+      const d = new Date(String(value).replace(' ', 'T'));
+      return Number.isNaN(d.getTime()) ? value : d.toLocaleString(window.i18n.currentLang() === 'si' ? 'si-LK' : 'en-LK');
+    }
+
+    async function loadLetters() {
+      const tbody = document.getElementById('lettersTableBody');
+      const emptyState = document.getElementById('emptyState');
+      const listStatus = document.getElementById('listStatus');
+      const columnLabels = Array.from(
+        document.querySelectorAll('#lettersTable thead th')
+      ).map((th) => th.textContent);
+
+      try {
+        const { letters } = await window.letters.subjectOfficerLetters({
+          search: document.getElementById('search').value,
+          status: document.getElementById('filterStatus').value,
+        });
+
+        tbody.innerHTML = letters
+          .map((l) => {
+            const receivedAt = formatTimestamp(l.subject_officer_received_at);
+            const sentAt = formatTimestamp(l.sent_to_relevant_at);
+
+            const receivedCell = receivedAt
+              ? receivedAt
+              : l.status === 'pending_review'
+                ? `<span class="pending-note">${window.i18n.t('awaitingAdminReview')}</span>`
+                : `<button type="button" class="receive-btn" data-id="${l.id}">${window.i18n.t('markReceived')}</button>`;
+
+            const sentCell = sentAt
+              ? sentAt
+              : receivedAt
+                ? `<button type="button" class="send-btn" data-id="${l.id}">${window.i18n.t('sendToRelevant')}</button>`
+                : '-';
+
+            return `
+          <tr>
+            <td data-label="${columnLabels[0]}">${l.letter_number}</td>
+            <td data-label="${columnLabels[1]}">${l.subject || '-'}</td>
+            <td data-label="${columnLabels[2]}">${l.sender_name || '-'}</td>
+            <td data-label="${columnLabels[3]}">${l.relevant_officer_name || '-'}</td>
+            <td data-label="${columnLabels[4]}"><span class="status-badge status-${l.status}">${l.status}</span></td>
+            <td data-label="${columnLabels[5]}">${receivedCell}</td>
+            <td data-label="${columnLabels[6]}">${sentCell}</td>
+          </tr>`;
+          })
+          .join('');
+        emptyState.hidden = letters.length !== 0;
+      } catch (err) {
+        if (err.message === 'Not authenticated' || err.message === 'Forbidden') {
+          window.location.href = 'index.html';
+          return;
+        }
+        listStatus.textContent = err.message;
+      }
+    }
+
+    document.getElementById('lettersTableBody').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-id]');
+      if (!btn) return;
+      const listStatus = document.getElementById('listStatus');
+      btn.disabled = true;
+      try {
+        if (btn.classList.contains('receive-btn')) {
+          await window.letters.subjectOfficerReceive(btn.dataset.id);
+        } else if (btn.classList.contains('send-btn')) {
+          await window.letters.subjectOfficerSend(btn.dataset.id);
+        }
+        listStatus.textContent = '';
+        await loadLetters();
+      } catch (err) {
+        listStatus.textContent = err.message;
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('filterForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      loadLetters();
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await window.api.post('/auth/logout');
+      window.location.href = 'index.html';
+    });
+
+    // Officer roster (Division / Position / Name / Email) - maintained here
+    // so the DCS has candidates to pick as a Relevant Officer on new-letter.html.
+    const officerDivisionSelect = document.getElementById('officerDivision');
+    window.APP_CONFIG.DIVISIONS.forEach((d) => {
+      const opt = document.createElement('option');
+      opt.value = d.code;
+      opt.textContent = `${d.code} - ${d.name[window.i18n.currentLang()] || d.name.en}`;
+      officerDivisionSelect.appendChild(opt);
+    });
+
+    async function loadOfficers() {
+      const tbody = document.getElementById('officersTableBody');
+      const emptyState = document.getElementById('officersEmptyState');
+      const columnLabels = Array.from(
+        document.querySelectorAll('#officersTable thead th')
+      ).map((th) => th.textContent);
+
+      try {
+        const { officers } = await window.letters.subjectOfficerListOfficers();
+        tbody.innerHTML = officers
+          .map(
+            (o) => `
+          <tr>
+            <td data-label="${columnLabels[0]}">${o.name}</td>
+            <td data-label="${columnLabels[1]}">${o.email}</td>
+            <td data-label="${columnLabels[2]}">${o.designation || '-'}</td>
+            <td data-label="${columnLabels[3]}">${o.division || '-'}</td>
+            <td data-label="${columnLabels[4]}">
+              <button type="button" class="remove-officer-btn" data-id="${o.id}">${window.i18n.t('remove')}</button>
+            </td>
+          </tr>`
+          )
+          .join('');
+        emptyState.hidden = officers.length !== 0;
+      } catch (err) {
+        if (err.message === 'Not authenticated' || err.message === 'Forbidden') {
+          window.location.href = 'index.html';
+        }
+      }
+    }
+
+    document.getElementById('officersTableBody').addEventListener('click', async (e) => {
+      const btn = e.target.closest('.remove-officer-btn');
+      if (!btn) return;
+      if (!window.confirm(window.i18n.t('confirmRemoveOfficer'))) return;
+
+      const listStatus = document.getElementById('listStatus');
+      btn.disabled = true;
+      try {
+        await window.letters.subjectOfficerRemoveOfficer(btn.dataset.id);
+        listStatus.textContent = window.i18n.t('officerRemovedSuccess');
+        await loadOfficers();
+      } catch (err) {
+        listStatus.textContent = err.message;
+        btn.disabled = false;
+      }
+    });
+
+    const addOfficerDialog = document.getElementById('addOfficerDialog');
+    const addOfficerForm = document.getElementById('addOfficerForm');
+
+    document.getElementById('addOfficerNavBtn').addEventListener('click', () => {
+      addOfficerForm.reset();
+      document.getElementById('officerFormStatus').textContent = '';
+      addOfficerDialog.showModal();
+    });
+
+    document.getElementById('addOfficerCancelBtn').addEventListener('click', () => {
+      addOfficerDialog.close();
+    });
+
+    addOfficerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const statusEl = document.getElementById('officerFormStatus');
+      statusEl.textContent = window.i18n.t('submitting');
+      try {
+        await window.letters.subjectOfficerCreateOfficer({
+          name: document.getElementById('officerNameInput').value.trim(),
+          email: document.getElementById('officerEmailInput').value.trim(),
+          designation: document.getElementById('officerPosition').value.trim(),
+          division: officerDivisionSelect.value,
+        });
+        statusEl.textContent = window.i18n.t('officerCreatedSuccess');
+        addOfficerDialog.close();
+        await loadOfficers();
+      } catch (err) {
+        statusEl.textContent = err.message;
+      }
+    });
+
+    loadLetters();
+    loadOfficers();
+  </script>
+</body>
+</html>
