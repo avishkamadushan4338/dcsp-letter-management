@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#4a0918" />
+  <title>DCS Letter Management - Print Numbers</title>
+  <link rel="stylesheet" href="css/sinhala.css" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/print.css" />
+</head>
+<body>
+  <a class="skip-link no-print" href="#main" data-i18n="skipToContent">Skip to main content</a>
+  <header class="app-header no-print">
+    <h1 data-i18n="printNumbersTitle">Print Number Sheet</h1>
+    <nav>
+      <a href="dashboard.html" data-i18n="backToDashboard">Back to Dashboard</a>
+      <button class="lang-toggle" data-lang-toggle type="button">සිංහල / English</button>
+    </nav>
+  </header>
+
+  <main id="main" class="no-print">
+    <form id="printControls" class="filter-bar">
+      <select id="printDivision">
+        <option value="" data-i18n="allDivisions">All divisions</option>
+      </select>
+      <button type="button" id="generateSheetBtn" data-i18n="generateSheet">Load Letters</button>
+      <button type="button" id="printBtn" disabled data-i18n="printSheet">Print</button>
+    </form>
+    <p id="formStatus" class="status-message" role="status" aria-live="polite"></p>
+  </main>
+
+  <div id="numberSheet" class="number-sheet"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/letters.js"></script>
+  <script src="js/print.js"></script>
+</body>
+</html>
