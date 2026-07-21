@@ -22,6 +22,11 @@ const program = Effect.gen(function* () {
     appLayer.pipe(
       Layer.provide(MailTransporterLive),
       Layer.provide(AppConfigLive),
+      Layer.provide(HttpRouter.cors({
+        allowedOrigins: ["*"],
+        allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type"],
+      })),
     ),
   ).pipe(Effect.scoped);
 
