@@ -1,7 +1,7 @@
 {
   "name": "@dcsp/server",
   "version": "1.0.0",
-  "description": "Divisional Correspondence Secretariat (DCS) letter tracking system - backend (TypeScript + Effect).",
+  "description": "Divisional Correspondence Secretariat (DCS) letter tracking system - backend (TypeScript + Effect + Cloudflare D1).",
   "private": true,
   "type": "module",
   "main": "dist/server.js",
@@ -16,13 +16,15 @@
     "@effect/platform": "0.97.0",
     "@effect/platform-node": "0.108.0",
     "@effect/sql": "0.52.0",
-    "@effect/sql-mysql2": "0.53.0",
+    "@effect/sql-d1": "0.50.0",
+    "@effect/sql-sqlite-bun": "^0.53.0",
     "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.45.2",
     "effect": "3.22.0",
-    "mysql2": "^3.11.0",
     "nodemailer": "^9.0.3"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260721.1",
     "@types/node": "^22.10.0",
     "@types/nodemailer": "^6.4.16",
     "tsx": "^4.19.2",

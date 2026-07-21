@@ -1,12 +1,12 @@
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "@effect/platform";
 import { Effect } from "effect";
-import { ConflictError, NotFoundError, ValidationError } from "../../domain/errors.js";
-import * as LetterRepo from "../../repositories/LetterRepo.js";
-import * as ReassignmentRepo from "../../repositories/ReassignmentRepo.js";
-import * as SettingsRepo from "../../repositories/SettingsRepo.js";
-import * as MailService from "../../services/MailService.js";
-import * as NumberService from "../../services/NumberService.js";
-import { requireDcs } from "../auth.js";
+import { ConflictError, NotFoundError, ValidationError } from "../../domain/errors.ts";
+import * as LetterRepo from "../../repositories/LetterRepo.ts";
+import * as ReassignmentRepo from "../../repositories/ReassignmentRepo.ts";
+import * as SettingsRepo from "../../repositories/SettingsRepo.ts";
+import * as MailService from "../../services/MailService.ts";
+import * as NumberService from "../../services/NumberService.ts";
+import { requireDcs } from "../auth.ts";
 
 interface CreateLetterBody {
   readonly letterNumber?: string;

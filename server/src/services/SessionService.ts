@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import type { SessionPayload, SessionRole } from "../domain/types.js";
+import type { SessionPayload, SessionRole } from "../domain/types.ts";
 
 // Minimal cookie-session login, shared by two roles: 'dcs' (DCS staff
 // dashboard/new-letter pages) and 'subject_officer' (the Subject Officer's

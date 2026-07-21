@@ -1,6 +1,6 @@
-import { SqlClient } from "@effect/sql";
+import { D1Client } from "@effect/sql-d1";
 import { Effect } from "effect";
-import type { Reassignment } from "../domain/types.js";
+import type { Reassignment } from "../domain/types.ts";
 
 export interface CreateReassignmentInput {
   readonly letterId: number | string;
@@ -11,7 +11,7 @@ export interface CreateReassignmentInput {
 
 export const create = ({ letterId, fromOfficerId, toOfficerId, note }: CreateReassignmentInput) =>
   Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
+    const sql = yield* D1Client.D1Client;
     yield* sql`
       INSERT INTO letter_reassignments (letter_id, from_officer_id, to_officer_id, note)
       VALUES (${letterId}, ${fromOfficerId}, ${toOfficerId}, ${note ?? null})
@@ -20,7 +20,7 @@ export const create = ({ letterId, fromOfficerId, toOfficerId, note }: CreateRea
 
 export const findByLetterId = (letterId: number | string) =>
   Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
+    const sql = yield* D1Client.D1Client;
     return yield* sql<Reassignment>`
       SELECT
         r.id, r.reassigned_at, r.note,

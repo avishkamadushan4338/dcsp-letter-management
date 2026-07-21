@@ -1,12 +1,12 @@
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "@effect/platform";
 import { Effect } from "effect";
-import { ConflictError, NotFoundError, ValidationError } from "../../domain/errors.js";
-import * as LetterRepo from "../../repositories/LetterRepo.js";
-import * as OfficerRepo from "../../repositories/OfficerRepo.js";
-import * as SettingsRepo from "../../repositories/SettingsRepo.js";
-import * as MailService from "../../services/MailService.js";
-import * as NumberService from "../../services/NumberService.js";
-import { requireSubjectOfficer } from "../auth.js";
+import { ConflictError, NotFoundError, ValidationError } from "../../domain/errors.ts";
+import * as LetterRepo from "../../repositories/LetterRepo.ts";
+import * as OfficerRepo from "../../repositories/OfficerRepo.ts";
+import * as SettingsRepo from "../../repositories/SettingsRepo.ts";
+import * as MailService from "../../services/MailService.ts";
+import * as NumberService from "../../services/NumberService.ts";
+import { requireSubjectOfficer } from "../auth.ts";
 
 const asSingleParam = (value: string | ReadonlyArray<string> | undefined): string | undefined => {
   if (typeof value === "string") return value;

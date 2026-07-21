@@ -1,9 +1,9 @@
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "@effect/platform";
 import { Effect } from "effect";
-import { ValidationError } from "../../domain/errors.js";
-import * as OfficerRepo from "../../repositories/OfficerRepo.js";
-import * as SettingsRepo from "../../repositories/SettingsRepo.js";
-import { requireDcs } from "../auth.js";
+import { ValidationError } from "../../domain/errors.ts";
+import * as OfficerRepo from "../../repositories/OfficerRepo.ts";
+import * as SettingsRepo from "../../repositories/SettingsRepo.ts";
+import { requireDcs } from "../auth.ts";
 
 const SUBJECT_OFFICER_SETTING_KEY = "subject_officer_id";
 

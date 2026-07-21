@@ -1,9 +1,9 @@
 import nodemailer from "nodemailer";
 import { Context, Effect, Layer } from "effect";
-import { AppConfig } from "../config/AppConfig.js";
-import * as LinkRepo from "../repositories/LinkRepo.js";
-import * as TokenService from "./TokenService.js";
-import type { Letter, LinkOfficerRole, Officer } from "../domain/types.js";
+import { AppConfig } from "../config/AppConfig.ts";
+import * as LinkRepo from "../repositories/LinkRepo.ts";
+import * as TokenService from "./TokenService.ts";
+import type { Letter, LinkOfficerRole, Officer } from "../domain/types.ts";
 
 // Transporter is built once (from AppConfig) and shared, same as the
 // module-level `nodemailer.createTransport(...)` in the old

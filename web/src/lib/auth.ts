@@ -1,5 +1,5 @@
-import { api } from "./api.js";
-import type { SessionRole } from "./types.js";
+import { api } from "./api.ts";
+import type { SessionRole } from "./types.ts";
 
 export interface LoginResponse {
   readonly ok: true;

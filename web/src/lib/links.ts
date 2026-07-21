@@ -1,5 +1,5 @@
-import { API_BASE } from "./config.js";
-import type { LinkOfficerRole, Letter, Officer, Reassignment } from "./types.js";
+import { API_BASE } from "./config.ts";
+import type { LinkOfficerRole, Letter, Officer, Reassignment } from "./types.ts";
 
 // Typed port of the fetch helpers inside public/js/officer-actions.js -
 // used only by the token-authenticated subject-officer/relevant-officer

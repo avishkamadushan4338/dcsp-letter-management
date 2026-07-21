@@ -1,8 +1,8 @@
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "@effect/platform";
 import { Effect } from "effect";
-import { AppConfig } from "../../config/AppConfig.js";
-import { UnauthorizedError } from "../../domain/errors.js";
-import * as SessionService from "../../services/SessionService.js";
+import { AppConfig } from "../../config/AppConfig.ts";
+import { UnauthorizedError } from "../../domain/errors.ts";
+import * as SessionService from "../../services/SessionService.ts";
 
 interface LoginBody {
   readonly username?: string;

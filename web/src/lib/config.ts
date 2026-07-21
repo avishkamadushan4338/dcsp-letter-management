@@ -5,7 +5,7 @@ export interface Division {
   readonly name: { readonly en: string; readonly si: string };
 }
 
-export const API_BASE = "/api";
+export const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 export const DIVISIONS: ReadonlyArray<Division> = [
   { code: "01", name: { en: "Development Division", si: "සංවර්ධන අංශය" } },

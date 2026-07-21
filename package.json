@@ -9,14 +9,23 @@
     "web"
   ],
   "scripts": {
-    "dev": "concurrently -n server,web -c blue,green \"npm run dev -w server\" \"npm run dev -w web\"",
+    "dev": "bun alchemy dev",
     "dev:server": "npm run dev -w server",
     "dev:web": "npm run dev -w web",
     "build": "npm run build -w server && npm run build -w web",
     "start": "npm run start -w server",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w web"
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
+    "test": "npm run typecheck",
+    "deploy": "bun alchemy deploy"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "alchemy": "next",
+    "@effect/platform-bun": "4.0.0-beta.99",
+    "concurrently": "^9.1.0",
+    "drizzle-kit": "^0.31.10"
+  },
+  "dependencies": {
+    "@effect/platform-node": "4.0.0-beta.99",
+    "effect": "4.0.0-beta.99"
   }
 }

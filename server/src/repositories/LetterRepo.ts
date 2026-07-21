@@ -1,6 +1,6 @@
-import { SqlClient } from "@effect/sql";
+import { D1Client } from "@effect/sql-d1";
 import { Effect } from "effect";
-import type { CreatedByRole, Letter, LetterStatus } from "../domain/types.js";
+import type { CreatedByRole, Letter, LetterStatus } from "../domain/types.ts";
 
 const LIST_SELECT = `
   SELECT
@@ -42,27 +42,18 @@ export const create = ({
   sentToRelevantAt = null,
 }: CreateLetterInput) =>
   Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    // INSERT's ResultSetHeader (which carries insertId) isn't array-shaped,
-    // so @effect/sql-mysql2's row-mapping normalizes it away to `[]` - the
-    // reliable way to recover the id is LAST_INSERT_ID() on the same pooled
-    // connection, which withTransaction pins for both statements.
-    const insertId = yield* sql.withTransaction(
-      Effect.gen(function* () {
-        yield* sql`
-          INSERT INTO letters
-            (letter_number, division, subject, sender_name, received_date,
-             subject_officer_id, relevant_officer_id, created_by_role,
-             status, subject_officer_received_at, sent_to_relevant_at)
-          VALUES (${letterNumber}, ${division}, ${subject ?? null}, ${senderName ?? null}, ${receivedDate ?? null},
-                  ${subjectOfficerId ?? null}, ${relevantOfficerId ?? null}, ${createdByRole},
-                  ${status}, ${subjectOfficerReceivedAt}, ${sentToRelevantAt})
-        `;
-        const rows = yield* sql<{ id: number }>`SELECT LAST_INSERT_ID() AS id`;
-        return rows[0]!.id;
-      })
-    );
-    return yield* findById(insertId);
+    const sql = yield* D1Client.D1Client;
+    const rows = yield* sql<{ id: number }>`
+      INSERT INTO letters
+        (letter_number, division, subject, sender_name, received_date,
+         subject_officer_id, relevant_officer_id, created_by_role,
+         status, subject_officer_received_at, sent_to_relevant_at)
+      VALUES (${letterNumber}, ${division}, ${subject ?? null}, ${senderName ?? null}, ${receivedDate ?? null},
+              ${subjectOfficerId ?? null}, ${relevantOfficerId ?? null}, ${createdByRole},
+              ${status}, ${subjectOfficerReceivedAt}, ${sentToRelevantAt})
+      RETURNING id
+    `;
+    return yield* findById(rows[0]!.id);
   });
 
 export interface FindAllOptions {
@@ -73,7 +64,7 @@ export interface FindAllOptions {
 
 export const findAll = ({ status, division, search }: FindAllOptions = {}) =>
   Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
+    const sql = yield* D1Client.D1Client;
     const clauses: Array<string> = [];
     const params: Array<unknown> = [];
 
@@ -96,16 +87,14 @@ export const findAll = ({ status, division, search }: FindAllOptions = {}) =>
 
 export const findById = (id: number | string) =>
   Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
+    const sql = yield* D1Client.D1Client;
     const rows = yield* sql.unsafe<Letter>(`${LIST_SELECT} WHERE l.id = ?`, [id]);
     return rows[0] ?? null;
   });
 
-// Generic partial-update, mirroring models/Letter.js#updateStatus - callers
-// pass exactly the column/value pairs they want to change.
 export const updateStatus = (id: number | string, fields: Record<string, unknown>) =>
   Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
+    const sql = yield* D1Client.D1Client;
     const columns = Object.keys(fields);
     if (columns.length === 0) return yield* findById(id);
 

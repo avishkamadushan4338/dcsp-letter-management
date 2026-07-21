@@ -1,8 +1,8 @@
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "@effect/platform";
 import { Effect } from "effect";
-import { ValidationError } from "../../domain/errors.js";
-import * as NumberService from "../../services/NumberService.js";
-import { requireDcs } from "../auth.js";
+import { ValidationError } from "../../domain/errors.ts";
+import * as NumberService from "../../services/NumberService.ts";
+import { requireDcs } from "../auth.ts";
 
 interface IssueNumbersBody {
   readonly division?: string;

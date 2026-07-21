@@ -10,11 +10,14 @@
     "exactOptionalPropertyTypes": false,
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "declaration": false,
-    "sourceMap": true
+    "sourceMap": true,
+    "allowImportingTsExtensions": true,
+    "types": ["@cloudflare/workers-types"]
   },
   "include": ["src/**/*.ts"]
 }

@@ -1,14 +1,14 @@
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "@effect/platform";
 import { Effect } from "effect";
-import { AppConfig } from "../../config/AppConfig.js";
-import { ConflictError, ForbiddenError, ValidationError } from "../../domain/errors.js";
-import * as LetterRepo from "../../repositories/LetterRepo.js";
-import * as LinkRepo from "../../repositories/LinkRepo.js";
-import * as OfficerRepo from "../../repositories/OfficerRepo.js";
-import * as ReassignmentRepo from "../../repositories/ReassignmentRepo.js";
-import * as MailService from "../../services/MailService.js";
-import * as TokenService from "../../services/TokenService.js";
-import type { Letter, LinkOfficerRole, LinkRow } from "../../domain/types.js";
+import { AppConfig } from "../../config/AppConfig.ts";
+import { ConflictError, ForbiddenError, ValidationError } from "../../domain/errors.ts";
+import * as LetterRepo from "../../repositories/LetterRepo.ts";
+import * as LinkRepo from "../../repositories/LinkRepo.ts";
+import * as OfficerRepo from "../../repositories/OfficerRepo.ts";
+import * as ReassignmentRepo from "../../repositories/ReassignmentRepo.ts";
+import * as MailService from "../../services/MailService.ts";
+import * as TokenService from "../../services/TokenService.ts";
+import type { Letter, LinkOfficerRole, LinkRow } from "../../domain/types.ts";
 
 // No cookie/session auth on this whole group - subject/relevant officers
 // never log in, they're authenticated implicitly by possessing a valid,
