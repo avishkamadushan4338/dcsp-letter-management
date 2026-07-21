@@ -12,9 +12,9 @@ interface IssueNumbersBody {
   readonly count?: number;
 }
 
-export const numbersRoutesLayer = HttpRouter.use(() =>
+export const numbersRoutesLayer = HttpRouter.use((router) =>
   Effect.gen(function* () {
-    yield* HttpRouter.add("POST", "/api/numbers/issue",
+    yield* router.add("POST", "/api/numbers/issue",
       Effect.gen(function* () {
         yield* requireDcs;
         const body = (yield* HttpServerRequest.schemaBodyJson(Schema.Unknown)) as IssueNumbersBody;

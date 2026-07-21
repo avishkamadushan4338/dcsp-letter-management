@@ -47,9 +47,9 @@ const serveStatic = Effect.gen(function* () {
   return yield* HttpServerResponse.file(requestedPath);
 });
 
-const serveStaticLayer = HttpRouter.use(() =>
+const serveStaticLayer = HttpRouter.use((router) =>
   Effect.gen(function* () {
-    yield* HttpRouter.add("GET", "*", serveStatic);
+    yield* router.add("GET", "*", serveStatic);
   })
 );
 

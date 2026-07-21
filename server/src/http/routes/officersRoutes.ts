@@ -24,9 +24,9 @@ const asSingleParam = (value: string | ReadonlyArray<string> | undefined): strin
   return undefined;
 };
 
-export const officersRoutesLayer = HttpRouter.use(() =>
+export const officersRoutesLayer = HttpRouter.use((router) =>
   Effect.gen(function* () {
-    yield* HttpRouter.add("GET", "/api/officers/subject-officer",
+    yield* router.add("GET", "/api/officers/subject-officer",
       Effect.gen(function* () {
         yield* requireDcs;
         const id = yield* SettingsRepo.get(SUBJECT_OFFICER_SETTING_KEY);
@@ -35,7 +35,7 @@ export const officersRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("PUT", "/api/officers/subject-officer",
+    yield* router.add("PUT", "/api/officers/subject-officer",
       Effect.gen(function* () {
         yield* requireDcs;
         const body = (yield* HttpServerRequest.schemaBodyJson(Schema.Unknown)) as OfficerBody;
@@ -60,7 +60,7 @@ export const officersRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("GET", "/api/officers",
+    yield* router.add("GET", "/api/officers",
       Effect.gen(function* () {
         yield* requireDcs;
         const params = yield* HttpServerRequest.ParsedSearchParams;
@@ -69,7 +69,7 @@ export const officersRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("POST", "/api/officers",
+    yield* router.add("POST", "/api/officers",
       Effect.gen(function* () {
         yield* requireDcs;
         const body = (yield* HttpServerRequest.schemaBodyJson(Schema.Unknown)) as OfficerBody;
@@ -86,7 +86,7 @@ export const officersRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("PUT", "/api/officers/:id",
+    yield* router.add("PUT", "/api/officers/:id",
       Effect.gen(function* () {
         yield* requireDcs;
         const { id } = yield* HttpRouter.params;

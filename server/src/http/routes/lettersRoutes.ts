@@ -31,9 +31,9 @@ const asSingleParam = (value: string | ReadonlyArray<string> | undefined): strin
   return undefined;
 };
 
-export const lettersRoutesLayer = HttpRouter.use(() =>
+export const lettersRoutesLayer = HttpRouter.use((router) =>
   Effect.gen(function* () {
-    yield* HttpRouter.add("GET", "/api/letters",
+    yield* router.add("GET", "/api/letters",
       Effect.gen(function* () {
         yield* requireDcs;
         const params = yield* HttpServerRequest.ParsedSearchParams;
@@ -46,7 +46,7 @@ export const lettersRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("POST", "/api/letters",
+    yield* router.add("POST", "/api/letters",
       Effect.gen(function* () {
         yield* requireDcs;
         const body = (yield* HttpServerRequest.schemaBodyJson(Schema.Unknown)) as CreateLetterBody;
@@ -87,7 +87,7 @@ export const lettersRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("POST", "/api/letters/:id/review",
+    yield* router.add("POST", "/api/letters/:id/review",
       Effect.gen(function* () {
         yield* requireDcs;
         const { id } = yield* HttpRouter.params;
@@ -115,7 +115,7 @@ export const lettersRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("GET", "/api/letters/:id",
+    yield* router.add("GET", "/api/letters/:id",
       Effect.gen(function* () {
         yield* requireDcs;
         const { id } = yield* HttpRouter.params;

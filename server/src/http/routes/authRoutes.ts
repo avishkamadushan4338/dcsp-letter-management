@@ -12,9 +12,9 @@ interface LoginBody {
   readonly password?: string;
 }
 
-export const authRoutesLayer = HttpRouter.use(() =>
+export const authRoutesLayer = HttpRouter.use((router) =>
   Effect.gen(function* () {
-    yield* HttpRouter.add("POST", "/api/auth/login",
+    yield* router.add("POST", "/api/auth/login",
       Effect.gen(function* () {
         const body = (yield* HttpServerRequest.schemaBodyJson(Schema.Unknown)) as LoginBody;
         const config = yield* AppConfig;
@@ -42,7 +42,7 @@ export const authRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("POST", "/api/auth/logout",
+    yield* router.add("POST", "/api/auth/logout",
       Effect.gen(function* () {
         const response = yield* HttpServerResponse.json({ ok: true });
         return HttpServerResponse.expireCookieUnsafe(response, SessionService.COOKIE_NAME, { path: "/" });

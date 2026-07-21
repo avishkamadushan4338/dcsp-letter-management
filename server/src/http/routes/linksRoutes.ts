@@ -52,9 +52,9 @@ interface ReassignBody {
   readonly note?: string;
 }
 
-export const linksRoutesLayer = HttpRouter.use(() =>
+export const linksRoutesLayer = HttpRouter.use((router) =>
   Effect.gen(function* () {
-    yield* HttpRouter.add("GET", "/api/links/:token",
+    yield* router.add("GET", "/api/links/:token",
       Effect.gen(function* () {
         const { token } = yield* HttpRouter.params;
         const { letter, role } = yield* resolveLink(token!);
@@ -63,7 +63,7 @@ export const linksRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("POST", "/api/links/:token/receive",
+    yield* router.add("POST", "/api/links/:token/receive",
       Effect.gen(function* () {
         const { token } = yield* HttpRouter.params;
         const { letter, role } = yield* resolveLink(token!);
@@ -82,7 +82,7 @@ export const linksRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("POST", "/api/links/:token/send",
+    yield* router.add("POST", "/api/links/:token/send",
       Effect.gen(function* () {
         const { token } = yield* HttpRouter.params;
         const { letter, role, link } = yield* resolveLink(token!);
@@ -103,7 +103,7 @@ export const linksRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("POST", "/api/links/:token/action",
+    yield* router.add("POST", "/api/links/:token/action",
       Effect.gen(function* () {
         const { token } = yield* HttpRouter.params;
         const { letter, role, link } = yield* resolveLink(token!);
@@ -130,7 +130,7 @@ export const linksRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("GET", "/api/links/:token/officers",
+    yield* router.add("GET", "/api/links/:token/officers",
       Effect.gen(function* () {
         const { token } = yield* HttpRouter.params;
         const { role } = yield* resolveLink(token!);
@@ -143,7 +143,7 @@ export const linksRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("POST", "/api/links/:token/reassign",
+    yield* router.add("POST", "/api/links/:token/reassign",
       Effect.gen(function* () {
         const { token } = yield* HttpRouter.params;
         const { letter, role } = yield* resolveLink(token!);

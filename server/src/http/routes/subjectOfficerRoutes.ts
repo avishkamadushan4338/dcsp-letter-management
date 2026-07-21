@@ -33,9 +33,9 @@ interface CreateLetterBody {
   readonly routing?: "direct" | "via_admin";
 }
 
-export const subjectOfficerRoutesLayer = HttpRouter.use(() =>
+export const subjectOfficerRoutesLayer = HttpRouter.use((router) =>
   Effect.gen(function* () {
-    yield* HttpRouter.add("GET", "/api/subject-officer/officers",
+    yield* router.add("GET", "/api/subject-officer/officers",
       Effect.gen(function* () {
         yield* requireSubjectOfficer;
         const params = yield* HttpServerRequest.ParsedSearchParams;
@@ -44,7 +44,7 @@ export const subjectOfficerRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("POST", "/api/subject-officer/officers",
+    yield* router.add("POST", "/api/subject-officer/officers",
       Effect.gen(function* () {
         yield* requireSubjectOfficer;
         const body = (yield* HttpServerRequest.schemaBodyJson(Schema.Unknown)) as CreateOfficerBody;
@@ -61,7 +61,7 @@ export const subjectOfficerRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("DELETE", "/api/subject-officer/officers/:id",
+    yield* router.add("DELETE", "/api/subject-officer/officers/:id",
       Effect.gen(function* () {
         yield* requireSubjectOfficer;
         const { id } = yield* HttpRouter.params;
@@ -72,7 +72,7 @@ export const subjectOfficerRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("GET", "/api/subject-officer/letters",
+    yield* router.add("GET", "/api/subject-officer/letters",
       Effect.gen(function* () {
         yield* requireSubjectOfficer;
         const params = yield* HttpServerRequest.ParsedSearchParams;
@@ -85,7 +85,7 @@ export const subjectOfficerRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("POST", "/api/subject-officer/letters",
+    yield* router.add("POST", "/api/subject-officer/letters",
       Effect.gen(function* () {
         yield* requireSubjectOfficer;
         const body = (yield* HttpServerRequest.schemaBodyJson(Schema.Unknown)) as CreateLetterBody;
@@ -153,7 +153,7 @@ export const subjectOfficerRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("POST", "/api/subject-officer/letters/:id/receive",
+    yield* router.add("POST", "/api/subject-officer/letters/:id/receive",
       Effect.gen(function* () {
         yield* requireSubjectOfficer;
         const { id } = yield* HttpRouter.params;
@@ -168,7 +168,7 @@ export const subjectOfficerRoutesLayer = HttpRouter.use(() =>
       })
     );
 
-    yield* HttpRouter.add("POST", "/api/subject-officer/letters/:id/send",
+    yield* router.add("POST", "/api/subject-officer/letters/:id/send",
       Effect.gen(function* () {
         yield* requireSubjectOfficer;
         const { id } = yield* HttpRouter.params;
