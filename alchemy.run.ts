@@ -1,7 +1,10 @@
 import * as Alchemy from "alchemy";
 import * as Cloudflare from "alchemy/Cloudflare";
+import * as GitHub from "alchemy/GitHub";
+import * as Output from "alchemy/Output";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
 
 const db = Cloudflare.D1.Database("Database", {
   migrationsDir: "./server/src/db/migrations",
@@ -20,7 +23,7 @@ const api = Cloudflare.Worker("Api", {
 export default Alchemy.Stack(
   "DcspLetterManagement",
   {
-    providers: Cloudflare.providers(),
+    providers: Layer.mergeAll(Cloudflare.providers(), GitHub.providers()),
     state: Cloudflare.state(),
   },
   Effect.gen(function* () {
@@ -34,6 +37,26 @@ export default Alchemy.Stack(
         VITE_API_URL: apiResource.url.as<string>(),
       },
     });
+
+    if (process.env.PULL_REQUEST) {
+      yield* GitHub.Comment("preview-comment", {
+        owner: "avishkamadushan4338",
+        repository: "dcsp-letter-management",
+        issueNumber: Number(process.env.PULL_REQUEST),
+        body: Output.interpolate`
+          ## Preview Deployed
+
+          **API URL:** ${apiResource.url}
+
+          **Site URL:** ${siteResource.url}
+
+          Built from commit ${process.env.GITHUB_SHA?.slice(0, 7)}
+
+          ---
+          _This comment updates automatically with each push._
+        `,
+      });
+    }
 
     const dbResource = yield* db;
     return {

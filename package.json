@@ -9,14 +9,15 @@
     "web"
   ],
   "scripts": {
-    "dev": "bun alchemy dev",
+    "dev": "bun alchemy dev --profile=dev",
     "dev:server": "npm run dev -w server",
     "dev:web": "npm run dev -w web",
     "build": "npm run build -w server && npm run build -w web",
     "start": "npm run start -w server",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
     "test": "npm run typecheck",
-    "deploy": "bun alchemy deploy"
+    "deploy": "bun alchemy deploy",
+    "deploy:github": "bun alchemy deploy stacks/github.ts --profile admin"
   },
   "devDependencies": {
     "alchemy": "next",
