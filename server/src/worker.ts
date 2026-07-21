@@ -36,7 +36,7 @@ export default {
               Layer.provide([Etag.layer, HttpPlatformStub, Path.layer]),
             ),
           );
-          return HttpEffect.toWebHandler(httpEffect);
+          return HttpEffect.toWebHandler(httpEffect as any);
         }).pipe(Effect.scoped),
       );
     }

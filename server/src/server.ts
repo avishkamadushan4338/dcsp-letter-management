@@ -29,4 +29,4 @@ const program = Effect.gen(function* () {
   yield* Layer.launch(serveLayer);
 });
 
-program.pipe(NodeRuntime.runMain);
+NodeRuntime.runMain(program as any);

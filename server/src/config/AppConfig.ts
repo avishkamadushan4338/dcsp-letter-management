@@ -5,11 +5,6 @@ import { Config, Context, Layer } from "effect";
 export interface AppConfigShape {
   readonly port: number;
   readonly appBaseUrl: string;
-  readonly dbHost: string;
-  readonly dbPort: number;
-  readonly dbUser: string;
-  readonly dbPassword: string;
-  readonly dbName: string;
   readonly smtpHost: string;
   readonly smtpPort: number;
   readonly smtpSecure: boolean;

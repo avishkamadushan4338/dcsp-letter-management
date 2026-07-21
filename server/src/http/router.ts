@@ -70,9 +70,9 @@ const errorMiddlewareLayer = HttpRouter.use((router) =>
           }
           yield* Effect.logError(cause);
           return yield* HttpServerResponse.json({ error: "Internal server error" }, { status: 500 });
-        })
+        }).pipe(Effect.orDie)
       )
-    )
+    ) as any
   )
 );
 
