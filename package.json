@@ -12,7 +12,7 @@
     "dev": "bun alchemy dev --profile=admin ",
     "test": "bun run typecheck",
     "deploy": "NODE_ENV=production bun alchemy deploy --profile admin --stage=prod",
-    "deploy:github": "bun alchemy deploy stacks/github.ts --profile admin"
+    "deploy:github": "NODE_ENV=production bun alchemy deploy stacks/github.ts --profile admin"
   },
     "devDependencies": {
       "alchemy": "next"
