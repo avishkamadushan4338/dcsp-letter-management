@@ -13,14 +13,8 @@
   },
   "license": "UNLICENSED",
   "dependencies": {
-    "@effect/platform": "0.97.0",
-    "@effect/platform-node": "0.108.0",
-    "@effect/sql": "0.52.0",
-    "@effect/sql-d1": "0.50.0",
-    "@effect/sql-sqlite-bun": "^0.53.0",
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.45.2",
-    "effect": "3.22.0",
     "nodemailer": "^9.0.3"
   },
   "devDependencies": {
