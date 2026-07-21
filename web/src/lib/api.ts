@@ -1,4 +1,4 @@
-import { API_BASE } from "./config.js";
+import { API_BASE } from "./config.ts";
 
 // Typed port of public/js/api.js - thin fetch wrapper shared by every page.
 // Always sends cookies (DCS/Subject-Officer session) and surfaces server

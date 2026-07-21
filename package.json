@@ -9,14 +9,20 @@
     "web"
   ],
   "scripts": {
-    "dev": "concurrently -n server,web -c blue,green \"npm run dev -w server\" \"npm run dev -w web\"",
-    "dev:server": "npm run dev -w server",
-    "dev:web": "npm run dev -w web",
-    "build": "npm run build -w server && npm run build -w web",
-    "start": "npm run start -w server",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w web"
+    "dev": "bun alchemy dev --profile=admin ",
+    "test": "bun run typecheck",
+    "deploy": "NODE_ENV=production bun alchemy deploy --profile admin --stage=prod",
+    "deploy:github": "NODE_ENV=production bun alchemy deploy stacks/github.ts --profile admin"
   },
-  "devDependencies": {
-    "concurrently": "^9.1.0"
+    "devDependencies": {
+      "alchemy": "next"
+    },
+  "dependencies": {
+    "effect": ">=4.0.0-beta.97 || >=4.0.0",
+    "@effect/platform-bun": ">=4.0.0-beta.97 || >=4.0.0",
+    "@effect/platform-node": ">=4.0.0-beta.97 || >=4.0.0",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "nodemailer": "^9.0.3"
   }
 }

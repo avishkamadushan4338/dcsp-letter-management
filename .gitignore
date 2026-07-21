@@ -9,3 +9,5 @@ Thumbs.db
 # Claude Code local settings can accumulate session artifacts (e.g. signed
 # link tokens from testing) - keep out of version control.
 .claude/
+
+.alchemy/

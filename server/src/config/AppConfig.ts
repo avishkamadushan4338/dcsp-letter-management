@@ -25,17 +25,11 @@ export interface AppConfigShape {
   readonly sessionSecret: string;
 }
 
-export class AppConfig extends Context.Tag("AppConfig")<AppConfig, AppConfigShape>() {}
+export class AppConfig extends Context.Service<AppConfig, AppConfigShape>()("AppConfig") {}
 
 const configEffect = Config.all({
   port: Config.number("PORT").pipe(Config.withDefault(3000)),
-  appBaseUrl: Config.string("APP_BASE_URL").pipe(Config.withDefault("http://localhost:3000")),
-
-  dbHost: Config.string("DB_HOST").pipe(Config.withDefault("127.0.0.1")),
-  dbPort: Config.number("DB_PORT").pipe(Config.withDefault(3306)),
-  dbUser: Config.string("DB_USER").pipe(Config.withDefault("root")),
-  dbPassword: Config.string("DB_PASSWORD").pipe(Config.withDefault("")),
-  dbName: Config.string("DB_NAME").pipe(Config.withDefault("letter_management")),
+  appBaseUrl: Config.string("APP_BASE_URL"),
 
   smtpHost: Config.string("SMTP_HOST").pipe(Config.withDefault("")),
   smtpPort: Config.number("SMTP_PORT").pipe(Config.withDefault(587)),
@@ -50,10 +44,10 @@ const configEffect = Config.all({
   linkSecret: Config.string("LINK_SECRET").pipe(Config.withDefault("dev-only-insecure-secret")),
   linkExpiryHours: Config.number("LINK_EXPIRY_HOURS").pipe(Config.withDefault(72)),
 
-  dcsUsername: Config.string("DCS_USERNAME").pipe(Config.withDefault("")),
-  dcsPassword: Config.string("DCS_PASSWORD").pipe(Config.withDefault("")),
-  subjectOfficerUsername: Config.string("SUBJECT_OFFICER_USERNAME").pipe(Config.withDefault("")),
-  subjectOfficerPassword: Config.string("SUBJECT_OFFICER_PASSWORD").pipe(Config.withDefault("")),
+  dcsUsername: Config.string("DCS_USERNAME").pipe(Config.withDefault("dcs.admin")),
+  dcsPassword: Config.string("DCS_PASSWORD").pipe(Config.withDefault("changeme")),
+  subjectOfficerUsername: Config.string("SUBJECT_OFFICER_USERNAME").pipe(Config.withDefault("subject.officer")),
+  subjectOfficerPassword: Config.string("SUBJECT_OFFICER_PASSWORD").pipe(Config.withDefault("changeme")),
 
   sessionSecret: Config.string("SESSION_SECRET").pipe(Config.withDefault("dev-only-insecure-secret")),
 });

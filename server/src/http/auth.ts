@@ -1,9 +1,9 @@
-import { HttpServerRequest } from "@effect/platform";
+import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest";
 import { Effect } from "effect";
-import { AppConfig } from "../config/AppConfig.js";
-import { ForbiddenError, UnauthorizedError } from "../domain/errors.js";
-import * as SessionService from "../services/SessionService.js";
-import type { SessionRole } from "../domain/types.js";
+import { AppConfig } from "../config/AppConfig.ts";
+import { ForbiddenError, UnauthorizedError } from "../domain/errors.ts";
+import * as SessionService from "../services/SessionService.ts";
+import type { SessionRole } from "../domain/types.ts";
 
 export const currentSession = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest;
@@ -15,9 +15,6 @@ export const currentSession = Effect.gen(function* () {
   return session;
 });
 
-// Direct port of middleware/auth.js#requireRole - applied per-route (Effect
-// has no Express-style `router.use(...)` middleware chain for a route
-// group), same effect as the original `router.use(requireAuth)`.
 export const requireRole = (role: SessionRole) =>
   Effect.gen(function* () {
     const session = yield* currentSession;

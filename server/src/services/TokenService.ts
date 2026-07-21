@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import type { LinkOfficerRole, LinkTokenPayload } from "../domain/types.js";
+import type { LinkOfficerRole, LinkTokenPayload } from "../domain/types.ts";
 
 // Direct port of server/services/tokenService.js - same HMAC-SHA256
 // base64url `body.hmac` token signing {letterId, role, exp}.

@@ -1,4 +1,4 @@
-import type { Lang } from "../i18n/I18nProvider.js";
+import type { Lang } from "../i18n/I18nProvider.ts";
 
 // Port of the repeated `formatTimestamp` helper in dashboard.html,
 // subject-officer-dashboard.html, and officer-actions.js - MySQL returns

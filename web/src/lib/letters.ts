@@ -1,5 +1,5 @@
-import { api } from "./api.js";
-import type { Letter, Officer, Reassignment } from "./types.js";
+import { api } from "./api.ts";
+import type { Letter, Officer, Reassignment } from "./types.ts";
 
 const toQuery = (params: object): string => {
   const entries = Object.entries(params).filter((entry): entry is [string, string] => Boolean(entry[1]));

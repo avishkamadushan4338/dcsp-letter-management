@@ -1,6 +1,9 @@
-import { SqlClient } from "@effect/sql";
+import { eq } from "drizzle-orm";
+import { aliasedTable } from "drizzle-orm";
 import { Effect } from "effect";
-import type { Reassignment } from "../domain/types.js";
+import { D1Db } from "../db/D1Db.ts";
+import { letterReassignments, officers } from "../db/schema.ts";
+import type { Reassignment } from "../domain/types.ts";
 
 export interface CreateReassignmentInput {
   readonly letterId: number | string;
@@ -9,27 +12,49 @@ export interface CreateReassignmentInput {
   readonly note?: string | null;
 }
 
-export const create = ({ letterId, fromOfficerId, toOfficerId, note }: CreateReassignmentInput) =>
+export const create = ({
+  letterId,
+  fromOfficerId,
+  toOfficerId,
+  note,
+}: CreateReassignmentInput) =>
   Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    yield* sql`
-      INSERT INTO letter_reassignments (letter_id, from_officer_id, to_officer_id, note)
-      VALUES (${letterId}, ${fromOfficerId}, ${toOfficerId}, ${note ?? null})
-    `;
+    const db = yield* D1Db;
+    yield* Effect.tryPromise(() =>
+      db.insert(letterReassignments).values({
+        letter_id: Number(letterId),
+        from_officer_id: Number(fromOfficerId),
+        to_officer_id: Number(toOfficerId),
+        note: note ?? null,
+      })
+    );
   });
 
 export const findByLetterId = (letterId: number | string) =>
   Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
-    return yield* sql<Reassignment>`
-      SELECT
-        r.id, r.reassigned_at, r.note,
-        fo.name AS from_officer_name,
-        to_o.name AS to_officer_name
-      FROM letter_reassignments r
-      JOIN officers fo ON fo.id = r.from_officer_id
-      JOIN officers to_o ON to_o.id = r.to_officer_id
-      WHERE r.letter_id = ${letterId}
-      ORDER BY r.reassigned_at ASC
-    `;
+    const db = yield* D1Db;
+    const fo = aliasedTable(officers, "from_officer");
+    const to = aliasedTable(officers, "to_officer");
+    const rows: Array<{
+      id: number;
+      reassigned_at: string;
+      note: string | null;
+      from_officer_name: string | null;
+      to_officer_name: string | null;
+    }> = yield* Effect.tryPromise(() =>
+      db
+        .select({
+          id: letterReassignments.id,
+          reassigned_at: letterReassignments.reassigned_at,
+          note: letterReassignments.note,
+          from_officer_name: fo.name,
+          to_officer_name: to.name,
+        })
+        .from(letterReassignments)
+        .leftJoin(fo, eq(letterReassignments.from_officer_id, fo.id))
+        .leftJoin(to, eq(letterReassignments.to_officer_id, to.id))
+        .where(eq(letterReassignments.letter_id, Number(letterId)))
+        .orderBy(letterReassignments.reassigned_at)
+    ) as any;
+    return rows as unknown as Reassignment[];
   });
