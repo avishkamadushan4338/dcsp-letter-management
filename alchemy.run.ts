@@ -14,6 +14,8 @@ const API_URL = isProd
   ? "https://dcsplettermanagement-api-prod-m2heskt5tt73l43m.avishkamadushan4338.workers.dev"
   : "http://localhost:1337/";
 
+console.log(`NODE_ENV=${process.env.NODE_ENV} env=${isProd ? "production" : "development"} APP_URL=${APP_URL} API_URL=${API_URL}`);
+
 const db = Cloudflare.D1.Database("Database", {
   migrationsDir: "./server/src/db/migrations",
   migrationsTable: "drizzle_migrations",
