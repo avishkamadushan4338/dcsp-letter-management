@@ -6,7 +6,7 @@
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  src: url('../fonts/NotoSansSinhala-Regular.woff2') format('woff2');
+  src: url('/fonts/NotoSansSinhala-Regular.woff2') format('woff2');
 }
 
 html[lang='si'] body,
