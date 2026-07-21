@@ -13,10 +13,6 @@ import { MailTransporterLive } from "./services/MailService.ts";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
-const port = Config.unsafeFromOptionSync(
-  Config.number("PORT").pipe(Config.withDefault(3000)),
-);
-
 const program = Effect.gen(function* () {
   const httpEffect = yield* HttpRouter.toHttpEffect(
     appLayer.pipe(
@@ -24,7 +20,7 @@ const program = Effect.gen(function* () {
       Layer.provide(AppConfigLive),
       Layer.provide(HttpRouter.cors({
         allowedOrigins: ["*"],
-        allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedMethods: ["GET", "POST", "OPTIONS"],
         allowedHeaders: ["Content-Type"],
       })),
     ),
@@ -32,7 +28,7 @@ const program = Effect.gen(function* () {
 
   const serveLayer = HttpServer.serve(httpEffect).pipe(
     HttpServer.withLogAddress,
-    Layer.provide(NodeHttpServer.layer(() => createServer(), { port })),
+    Layer.provide(NodeHttpServer.layer(() => createServer(), { port:1337 })),
   );
 
   yield* Layer.launch(serveLayer);

@@ -33,12 +33,12 @@ export default {
           const httpEffect = yield* HttpRouter.toHttpEffect(
             apiLayer.pipe(
               Layer.provide(layer),
+              Layer.provide([Etag.layer, HttpPlatformStub, Path.layer]),
               Layer.provide(HttpRouter.cors({
                 allowedOrigins: ["*"],
                 allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                 allowedHeaders: ["Content-Type"],
               })),
-              Layer.provide([Etag.layer, HttpPlatformStub, Path.layer]),
             ),
           );
           return HttpEffect.toWebHandler(httpEffect);
