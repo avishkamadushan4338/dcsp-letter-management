@@ -13,6 +13,12 @@ import { numbersRoutesLayer } from "./routes/numbersRoutes.ts";
 import { officersRoutesLayer } from "./routes/officersRoutes.ts";
 import { subjectOfficerRoutesLayer } from "./routes/subjectOfficerRoutes.ts";
 
+const corsLayer = HttpRouter.cors({
+  allowedOrigins: ["*"],
+  allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type"],
+});
+
 const serveStatic = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest;
   const fs = yield* FileSystem.FileSystem;
@@ -82,9 +88,11 @@ const allRoutesLayer = Layer.mergeAll(
 
 export const appLayer = allRoutesLayer.pipe(
   Layer.merge(serveStaticLayer),
+  Layer.merge(corsLayer),
   Layer.provide(HttpRouter.layer),
 );
 
 export const apiLayer = allRoutesLayer.pipe(
+  Layer.merge(corsLayer),
   Layer.provide(HttpRouter.layer),
 );

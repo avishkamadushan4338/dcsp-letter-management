@@ -34,11 +34,6 @@ export default {
             apiLayer.pipe(
               Layer.provide(layer),
               Layer.provide([Etag.layer, HttpPlatformStub, Path.layer]),
-              Layer.provide(HttpRouter.cors({
-                allowedOrigins: ["*"],
-                allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-                allowedHeaders: ["Content-Type"],
-              })),
             ),
           );
           return HttpEffect.toWebHandler(httpEffect);
