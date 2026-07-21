@@ -16,7 +16,7 @@
     "start": "npm run start -w server",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
     "test": "npm run typecheck",
-    "deploy": "bun alchemy deploy",
+    "deploy": "bun alchemy deploy --profile admin",
     "deploy:github": "bun alchemy deploy stacks/github.ts --profile admin"
   },
   "devDependencies": {
@@ -29,6 +29,7 @@
     "@effect/platform-node": "4.0.0-beta.99",
     "@effect/sql-d1": "4.0.0-beta.99",
     "@effect/sql-sqlite-bun": "4.0.0-beta.99",
+    "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "effect": "4.0.0-beta.99",
     "nodemailer": "^9.0.3"
