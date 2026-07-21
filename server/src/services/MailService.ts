@@ -8,10 +8,7 @@ import type { Letter, LinkOfficerRole, Officer } from "../domain/types.ts";
 // Transporter is built once (from AppConfig) and shared, same as the
 // module-level `nodemailer.createTransport(...)` in the old
 // server/services/mailService.js.
-export class MailTransporter extends Context.Tag("MailTransporter")<
-  MailTransporter,
-  nodemailer.Transporter
->() {}
+export class MailTransporter extends Context.Service<MailTransporter, nodemailer.Transporter>()("MailTransporter") {}
 
 export const MailTransporterLive = Layer.effect(
   MailTransporter,

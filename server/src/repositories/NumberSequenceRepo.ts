@@ -1,24 +1,45 @@
-import { D1Client } from "@effect/sql-d1";
+import { eq } from "drizzle-orm";
 import { Effect } from "effect";
+import { D1Db } from "../db/D1Db.ts";
+import { numberSequence } from "../db/schema.ts";
 import type { NumberSequenceRow } from "../domain/types.ts";
 
 export const getForUpdate = (division: string, year: number) =>
   Effect.gen(function* () {
-    const sql = yield* D1Client.D1Client;
-    const rows = yield* sql<NumberSequenceRow>`
-      SELECT * FROM number_sequence WHERE division = ${division}
-    `;
+    const db = yield* D1Db;
+    const rows: Array<{
+      division: string;
+      current_number: number;
+      year: number;
+      updated_at: string;
+    }> = yield* Effect.tryPromise(() =>
+      db
+        .select()
+        .from(numberSequence)
+        .where(eq(numberSequence.division, division))
+    ) as any;
     if (rows.length === 0) {
-      yield* sql`INSERT INTO number_sequence (division, current_number, year) VALUES (${division}, 0, ${year})`;
-      return { division, current_number: 0, year };
+      yield* Effect.tryPromise(() =>
+        db
+          .insert(numberSequence)
+          .values({ division, current_number: 0, year })
+      );
+      return { division, current_number: 0, year } as NumberSequenceRow;
     }
-    return rows[0]!;
+    return rows[0] as unknown as NumberSequenceRow;
   });
 
-export const update = (division: string, currentNumber: number, year: number) =>
+export const update = (
+  division: string,
+  currentNumber: number,
+  year: number
+) =>
   Effect.gen(function* () {
-    const sql = yield* D1Client.D1Client;
-    yield* sql`
-      UPDATE number_sequence SET current_number = ${currentNumber}, year = ${year} WHERE division = ${division}
-    `;
+    const db = yield* D1Db;
+    yield* Effect.tryPromise(() =>
+      db
+        .update(numberSequence)
+        .set({ current_number: currentNumber, year })
+        .where(eq(numberSequence.division, division))
+    );
   });

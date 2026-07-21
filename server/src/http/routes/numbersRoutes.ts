@@ -1,4 +1,7 @@
-import { HttpRouter, HttpServerRequest, HttpServerResponse } from "@effect/platform";
+import * as HttpRouter from "effect/unstable/http/HttpRouter";
+import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest";
+import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse";
+import * as Schema from "effect/Schema";
 import { Effect } from "effect";
 import { ValidationError } from "../../domain/errors.ts";
 import * as NumberService from "../../services/NumberService.ts";
@@ -9,24 +12,23 @@ interface IssueNumbersBody {
   readonly count?: number;
 }
 
-// Direct port of server/controllers/numbers.controller.js#issue.
-export const numbersRoutes = HttpRouter.empty.pipe(
-  HttpRouter.post(
-    "/api/numbers/issue",
-    Effect.gen(function* () {
-      yield* requireDcs;
-      const req = yield* HttpServerRequest.HttpServerRequest;
-      const body = (yield* req.json) as IssueNumbersBody;
+export const numbersRoutesLayer = HttpRouter.use(() =>
+  Effect.gen(function* () {
+    yield* HttpRouter.add("POST", "/api/numbers/issue",
+      Effect.gen(function* () {
+        yield* requireDcs;
+        const body = (yield* HttpServerRequest.schemaBodyJson(Schema.Unknown)) as IssueNumbersBody;
 
-      if (!body.division) {
-        return yield* new ValidationError({ message: "division is required" });
-      }
-      const n = Math.max(1, Math.min(Number(body.count) || 1, 100));
+        if (!body.division) {
+          return yield* new ValidationError({ message: "division is required" });
+        }
+        const n = Math.max(1, Math.min(Number(body.count) || 1, 100));
 
-      const numbers =
-        n === 1 ? [yield* NumberService.issueNext(body.division)] : yield* NumberService.issueBatch(body.division, n);
+        const numbers =
+          n === 1 ? [yield* NumberService.issueNext(body.division)] : yield* NumberService.issueBatch(body.division, n);
 
-      return yield* HttpServerResponse.json({ numbers }, { status: 201 });
-    })
-  )
+        return yield* HttpServerResponse.json({ numbers }, { status: 201 });
+      })
+    );
+  })
 );

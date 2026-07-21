@@ -1,23 +1,25 @@
-import { FileSystem, HttpRouter, HttpServerRequest, HttpServerResponse, Path } from "@effect/platform";
-import { Effect } from "effect";
+import * as HttpRouter from "effect/unstable/http/HttpRouter";
+import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest";
+import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse";
+import * as FileSystem from "effect/FileSystem";
+import * as Path from "effect/Path";
+import { Effect, Layer, Cause, Option } from "effect";
 import nodePath from "node:path";
 import nodeUrl from "node:url";
-import { authRoutes } from "./routes/authRoutes.ts";
-import { lettersRoutes } from "./routes/lettersRoutes.ts";
-import { linksRoutes } from "./routes/linksRoutes.ts";
-import { numbersRoutes } from "./routes/numbersRoutes.ts";
-import { officersRoutes } from "./routes/officersRoutes.ts";
-import { subjectOfficerRoutes } from "./routes/subjectOfficerRoutes.ts";
-import type { ValidationError, UnauthorizedError, ForbiddenError, NotFoundError, ConflictError } from "../domain/errors.ts";
-
-const currentDir = nodePath.dirname(nodeUrl.fileURLToPath(import.meta.url));
-const staticRoot = nodePath.resolve(currentDir, "../../../web/dist");
+import { authRoutesLayer } from "./routes/authRoutes.ts";
+import { lettersRoutesLayer } from "./routes/lettersRoutes.ts";
+import { linksRoutesLayer } from "./routes/linksRoutes.ts";
+import { numbersRoutesLayer } from "./routes/numbersRoutes.ts";
+import { officersRoutesLayer } from "./routes/officersRoutes.ts";
+import { subjectOfficerRoutesLayer } from "./routes/subjectOfficerRoutes.ts";
 
 const serveStatic = Effect.gen(function* () {
   const req = yield* HttpServerRequest.HttpServerRequest;
   const fs = yield* FileSystem.FileSystem;
   const p = yield* Path.Path;
 
+  const currentDir = nodePath.dirname(nodeUrl.fileURLToPath(import.meta.url));
+  const staticRoot = nodePath.resolve(currentDir, "../../../web/dist");
   const indexPath = p.join(staticRoot, "index.html");
   const url = new URL(req.url, "http://internal");
   const requestedPath = p.join(staticRoot, p.normalize(url.pathname));
@@ -39,48 +41,50 @@ const serveStatic = Effect.gen(function* () {
   return yield* HttpServerResponse.file(requestedPath);
 });
 
-const errorHandler = HttpRouter.catchTags({
-  ValidationError: (e: ValidationError) =>
-    HttpServerResponse.json({ error: e.message }, { status: 400 }),
-  UnauthorizedError: (e: UnauthorizedError) =>
-    HttpServerResponse.json({ error: e.message }, { status: 401 }),
-  ForbiddenError: (e: ForbiddenError) =>
-    HttpServerResponse.json({ error: e.message }, { status: 403 }),
-  NotFoundError: (e: NotFoundError) =>
-    HttpServerResponse.json({ error: e.message }, { status: 404 }),
-  ConflictError: (e: ConflictError) =>
-    HttpServerResponse.json({ error: e.message }, { status: 409 }),
-});
+const serveStaticLayer = HttpRouter.use(() =>
+  Effect.gen(function* () {
+    yield* HttpRouter.add("GET", "*", serveStatic);
+  })
+);
 
-export const appRouter = HttpRouter.empty.pipe(
-  HttpRouter.concat(authRoutes),
-  HttpRouter.concat(lettersRoutes),
-  HttpRouter.concat(numbersRoutes),
-  HttpRouter.concat(officersRoutes),
-  HttpRouter.concat(linksRoutes),
-  HttpRouter.concat(subjectOfficerRoutes),
-  HttpRouter.get("*", serveStatic),
-  errorHandler,
-  HttpRouter.catchAllCause((cause) =>
-    Effect.gen(function* () {
-      yield* Effect.logError(cause);
-      return yield* HttpServerResponse.json({ error: "Internal server error" }, { status: 500 });
-    })
+const errorMiddlewareLayer = HttpRouter.use((router) =>
+  router.addGlobalMiddleware((effect) =>
+    effect.pipe(
+      Effect.catchCause((cause) =>
+        Effect.gen(function* () {
+          const failure = Cause.findErrorOption(cause);
+          if (Option.isSome(failure)) {
+            const err = failure.value as { _tag?: string; message?: string };
+            const tag = err._tag;
+            if (tag === "ValidationError") return yield* HttpServerResponse.json({ error: err.message ?? "Validation error" }, { status: 400 });
+            if (tag === "UnauthorizedError") return yield* HttpServerResponse.json({ error: err.message ?? "Unauthorized" }, { status: 401 });
+            if (tag === "ForbiddenError") return yield* HttpServerResponse.json({ error: err.message ?? "Forbidden" }, { status: 403 });
+            if (tag === "NotFoundError") return yield* HttpServerResponse.json({ error: err.message ?? "Not found" }, { status: 404 });
+            if (tag === "ConflictError") return yield* HttpServerResponse.json({ error: err.message ?? "Conflict" }, { status: 409 });
+          }
+          yield* Effect.logError(cause);
+          return yield* HttpServerResponse.json({ error: "Internal server error" }, { status: 500 });
+        })
+      )
+    )
   )
 );
 
-export const apiRouter = HttpRouter.empty.pipe(
-  HttpRouter.concat(authRoutes),
-  HttpRouter.concat(lettersRoutes),
-  HttpRouter.concat(numbersRoutes),
-  HttpRouter.concat(officersRoutes),
-  HttpRouter.concat(linksRoutes),
-  HttpRouter.concat(subjectOfficerRoutes),
-  errorHandler,
-  HttpRouter.catchAllCause((cause) =>
-    Effect.gen(function* () {
-      yield* Effect.logError(cause);
-      return yield* HttpServerResponse.json({ error: "Internal server error" }, { status: 500 });
-    })
-  )
+const allRoutesLayer = Layer.mergeAll(
+  authRoutesLayer,
+  lettersRoutesLayer,
+  linksRoutesLayer,
+  numbersRoutesLayer,
+  officersRoutesLayer,
+  subjectOfficerRoutesLayer,
+  errorMiddlewareLayer,
+);
+
+export const appLayer = allRoutesLayer.pipe(
+  Layer.merge(serveStaticLayer),
+  Layer.provide(HttpRouter.layer),
+);
+
+export const apiLayer = allRoutesLayer.pipe(
+  Layer.provide(HttpRouter.layer),
 );

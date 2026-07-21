@@ -9,29 +9,20 @@
     "web"
   ],
   "scripts": {
-    "dev": "bun alchemy dev --profile=admin",
-    "dev:server": "npm run dev -w server",
-    "dev:web": "npm run dev -w web",
-    "build": "npm run build -w server && npm run build -w web",
-    "start": "npm run start -w server",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
-    "test": "npm run typecheck",
-    "deploy": "bun alchemy deploy --profile admin",
+    "dev": "bun alchemy dev --profile=admin ",
+    "test": "bun run typecheck",
+    "deploy": "bun alchemy deploy --profile admin --stage=prod",
     "deploy:github": "bun alchemy deploy stacks/github.ts --profile admin"
   },
-  "devDependencies": {
-    "alchemy": "next",
-    "concurrently": "^9.1.0",
-    "drizzle-kit": "^0.31.10"
-  },
+    "devDependencies": {
+      "alchemy": "next"
+    },
   "dependencies": {
-    "@effect/platform-bun": "4.0.0-beta.99",
-    "@effect/platform-node": "4.0.0-beta.99",
-    "@effect/sql-d1": "4.0.0-beta.99",
-    "@effect/sql-sqlite-bun": "4.0.0-beta.99",
+    "effect": ">=4.0.0-beta.97 || >=4.0.0",
+    "@effect/platform-bun": ">=4.0.0-beta.97 || >=4.0.0",
+    "@effect/platform-node": ">=4.0.0-beta.97 || >=4.0.0",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
-    "effect": "4.0.0-beta.99",
     "nodemailer": "^9.0.3"
   }
 }
