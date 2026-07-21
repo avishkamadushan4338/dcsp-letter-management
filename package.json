@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "bun alchemy dev --profile=admin ",
     "test": "bun run typecheck",
-    "deploy": "bun alchemy deploy --profile admin --stage=prod",
+    "deploy": "NODE_ENV=production bun alchemy deploy --profile admin --stage=prod",
     "deploy:github": "bun alchemy deploy stacks/github.ts --profile admin"
   },
     "devDependencies": {
