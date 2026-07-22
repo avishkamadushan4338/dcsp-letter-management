@@ -99,6 +99,10 @@ function LetterDetail({ letter, role }: { letter: LetterDetail; role: string | n
 
       {role === "dcs" && letter.status === "pending_review" && <ReviewCard letter={letter} />}
 
+      {role === "subjectOfficer" && (letter.status === "sent_to_subject" || letter.status === "with_subject_officer") && (
+        <SubjectOfficerActionCard letter={letter} />
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Timeline</CardTitle>
@@ -175,6 +179,53 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <p className="text-muted-foreground">{label}</p>
       <p className="font-medium">{value}</p>
     </div>
+  );
+}
+
+function SubjectOfficerActionCard({ letter }: { letter: LetterDetail }) {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: orpc.letters.get.key({ input: { id: letter.id } }) });
+    queryClient.invalidateQueries({ queryKey: orpc.letters.list.key() });
+  };
+
+  const markReceived = useMutation(
+    orpc.letters.subjectMarkReceived.mutationOptions({
+      onSuccess: () => {
+        toast.success("Marked received.");
+        invalidate();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  const forward = useMutation(
+    orpc.letters.subjectForward.mutationOptions({
+      onSuccess: () => {
+        toast.success("Sent to the Relevant Officer.");
+        invalidate();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Your action</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {letter.status === "sent_to_subject" ? (
+          <Button disabled={markReceived.isPending} onClick={() => markReceived.mutate({ id: letter.id })}>
+            {markReceived.isPending ? "Marking…" : "Mark Received"}
+          </Button>
+        ) : (
+          <Button disabled={forward.isPending} onClick={() => forward.mutate({ id: letter.id })}>
+            {forward.isPending ? "Sending…" : "Send to Relevant Officer"}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

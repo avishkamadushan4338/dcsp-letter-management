@@ -1,8 +1,8 @@
-import { appConfig, letter, letterReassignment, officer } from "@dcsp-letter-management/db/schema/letters";
+import { appConfig, letter, letterLink, letterReassignment, officer } from "@dcsp-letter-management/db/schema/letters";
 import { divisionCodeSchema, type DivisionCode } from "@dcsp-letter-management/domain/division";
 import { letterStatusSchema } from "@dcsp-letter-management/domain/letter-status";
 import { ORPCError } from "@orpc/server";
-import { and, asc, count, desc, eq, gte, like, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNull, like, or } from "drizzle-orm";
 import { z } from "zod";
 
 import { dcsProcedure, staffProcedure, subjectOfficerProcedure } from "../index";
@@ -18,6 +18,18 @@ async function requireActiveOfficer(db: Parameters<typeof issueLetterLink>[0], o
   });
   if (!found) {
     throw new ORPCError("BAD_REQUEST", { message: "That officer isn't active in this division." });
+  }
+  return found;
+}
+
+/** Loads a letter and confirms the calling Subject Officer actually owns it (mirrors the `get` check). */
+async function requireOwnSubjectLetter(db: Parameters<typeof issueLetterLink>[0], letterId: string, subjectOfficerId: string) {
+  const found = await db.query.letter.findFirst({ where: eq(letter.id, letterId) });
+  if (!found) {
+    throw new ORPCError("NOT_FOUND");
+  }
+  if (found.subjectOfficerId !== subjectOfficerId) {
+    throw new ORPCError("FORBIDDEN");
   }
   return found;
 }
@@ -315,6 +327,47 @@ export const lettersRouter = {
 
       return updated;
     }),
+
+  /**
+   * Subject Officer's own dashboard equivalent of the emailed link's "Mark
+   * Received" action (APP_FLOW.md §5) — lets a logged-in Subject Officer act
+   * on their letters without needing the emailed link.
+   */
+  subjectMarkReceived: subjectOfficerProcedure.input(z.object({ id: z.string() })).handler(async ({ context, input }) => {
+    const found = await requireOwnSubjectLetter(context.db, input.id, context.session.user.id);
+    if (found.status !== "sent_to_subject") {
+      throw new ORPCError("CONFLICT", { message: "This letter isn't waiting to be received." });
+    }
+
+    const [updated] = await context.db
+      .update(letter)
+      .set({ subjectReceivedAt: new Date(), status: "with_subject_officer" })
+      .where(eq(letter.id, input.id))
+      .returning();
+    return updated;
+  }),
+
+  /** Dashboard equivalent of the emailed link's "Send to Relevant Officer" action (APP_FLOW.md §5). */
+  subjectForward: subjectOfficerProcedure.input(z.object({ id: z.string() })).handler(async ({ context, input }) => {
+    const found = await requireOwnSubjectLetter(context.db, input.id, context.session.user.id);
+    if (found.status !== "with_subject_officer") {
+      throw new ORPCError("CONFLICT", { message: "Mark it received before forwarding it." });
+    }
+
+    const [updated] = await context.db
+      .update(letter)
+      .set({ subjectForwardedAt: new Date(), status: "sent_to_relevant" })
+      .where(eq(letter.id, input.id))
+      .returning();
+
+    // Spent — the emailed link for this role becomes unusable now too, same as forwarding via the link itself.
+    await context.db
+      .update(letterLink)
+      .set({ invalidatedAt: new Date() })
+      .where(and(eq(letterLink.letterId, input.id), eq(letterLink.role, "subjectOfficer"), isNull(letterLink.invalidatedAt)));
+
+    return updated;
+  }),
 
   /** "Print Numbers" utility (APP_FLOW.md §6): every number issued today. */
   printNumbersToday: dcsProcedure.handler(async ({ context }) => {
