@@ -9,38 +9,48 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.147 0.004 49.25);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.147 0.004 49.25);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.147 0.004 49.25);
-  --primary: oklch(0.216 0.006 56.043);
-  --primary-foreground: oklch(0.985 0.001 106.423);
-  --secondary: oklch(0.97 0.001 106.424);
-  --secondary-foreground: oklch(0.216 0.006 56.043);
-  --muted: oklch(0.97 0.001 106.424);
-  --muted-foreground: oklch(0.553 0.013 58.071);
-  --accent: oklch(0.97 0.001 106.424);
-  --accent-foreground: oklch(0.216 0.006 56.043);
+  /* Brand palette */
+  --color-maroon:       #4A0918;
+  --color-maroon-mid:   #6E1024;
+  --color-gold:         #C79A2B;
+  --color-gold-light:   #E8C55A;
+  --color-gold-dark:    #9A7520;
+  --color-cream:        #FCFBFA;
+  --color-cream-dark:   #F5EFE6;
+  --color-warm-neutral: #E7E1DC;
+
+  --background: var(--color-cream);
+  --foreground: var(--color-maroon);
+  --card: #ffffff;
+  --card-foreground: var(--color-maroon);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-maroon);
+  --primary: var(--color-maroon);
+  --primary-foreground: var(--color-cream);
+  --secondary: var(--color-cream-dark);
+  --secondary-foreground: var(--color-maroon);
+  --muted: var(--color-cream-dark);
+  --muted-foreground: var(--color-maroon-mid);
+  --accent: var(--color-gold);
+  --accent-foreground: var(--color-maroon);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.923 0.003 48.717);
-  --input: oklch(0.923 0.003 48.717);
-  --ring: oklch(0.709 0.01 56.259);
-  --chart-1: oklch(0.869 0.005 56.366);
-  --chart-2: oklch(0.553 0.013 58.071);
-  --chart-3: oklch(0.444 0.011 73.639);
-  --chart-4: oklch(0.374 0.01 67.558);
-  --chart-5: oklch(0.268 0.007 34.298);
+  --border: var(--color-warm-neutral);
+  --input: var(--color-warm-neutral);
+  --ring: var(--color-gold);
+  --chart-1: var(--color-maroon);
+  --chart-2: var(--color-gold);
+  --chart-3: var(--color-maroon-mid);
+  --chart-4: var(--color-gold-light);
+  --chart-5: var(--color-gold-dark);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0.001 106.423);
-  --sidebar-foreground: oklch(0.147 0.004 49.25);
-  --sidebar-primary: oklch(0.216 0.006 56.043);
-  --sidebar-primary-foreground: oklch(0.985 0.001 106.423);
-  --sidebar-accent: oklch(0.97 0.001 106.424);
-  --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
-  --sidebar-border: oklch(0.923 0.003 48.717);
-  --sidebar-ring: oklch(0.709 0.01 56.259);
+  --sidebar: var(--color-cream-dark);
+  --sidebar-foreground: var(--color-maroon);
+  --sidebar-primary: var(--color-maroon);
+  --sidebar-primary-foreground: var(--color-cream);
+  --sidebar-accent: var(--color-gold-light);
+  --sidebar-accent-foreground: var(--color-maroon);
+  --sidebar-border: var(--color-warm-neutral);
+  --sidebar-ring: var(--color-gold);
 }
 
 .dark {
@@ -75,6 +85,16 @@
   --sidebar-accent-foreground: oklch(0.985 0.001 106.423);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.553 0.013 58.071);
+}
+
+@theme {
+  /* Fluid type scale: legible on 320px phones, gently scales up to desktop,
+     then holds steady past ~1536px so it never over-grows on ultra-wide/4K+.
+     Line-heights stay as Tailwind's default unitless ratios, so they scale
+     proportionally with these sizes automatically. */
+  --text-xs:   clamp(0.8125rem, 0.79rem + 0.15vw, 0.875rem);   /* 13 -> 14px */
+  --text-sm:   clamp(0.9375rem, 0.9rem + 0.2vw, 1rem);         /* 15 -> 16px */
+  --text-base: clamp(1rem, 0.97rem + 0.15vw, 1.0625rem);       /* 16 -> 17px */
 }
 
 @theme inline {

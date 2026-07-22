@@ -15,7 +15,7 @@ export function Providers({ children }: ProvidersProps) {
   return (
     <ThemeProvider
       attribute="class"
-      defaultTheme="dark"
+      defaultTheme="light"
       disableTransitionOnChange
       storageKey="vite-ui-theme"
     >
