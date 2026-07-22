@@ -2,13 +2,18 @@ import alchemy from "alchemy";
 import { Vite } from "alchemy/cloudflare";
 import { Worker } from "alchemy/cloudflare";
 import { D1Database } from "alchemy/cloudflare";
+import { CloudflareStateStore } from "alchemy/state";
 import { config } from "dotenv";
 
-config({ path: "./.env" });
-config({ path: "../../apps/web/.env" });
-config({ path: "../../apps/server/.env" });
+const isProd = process.env.NODE_ENV === "production";
 
-const app = await alchemy("dcsp-letter-management");
+config({ path: "./.env" });
+config({ path: isProd ? "../../apps/web/.env.production" : "../../apps/web/.env" });
+config({ path: isProd ? "../../apps/server/.env.production" : "../../apps/server/.env" });
+
+const app = await alchemy("dcsp-letter-management", {
+  stateStore: (scope) => new CloudflareStateStore(scope,),adopt:true
+});
 
 const db = await D1Database("database", {
   migrationsDir: "../../packages/db/src/migrations",
