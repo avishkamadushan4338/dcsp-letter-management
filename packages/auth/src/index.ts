@@ -43,13 +43,12 @@ export function createAuth() {
         },
       },
     },
-    // uncomment cookieCache setting when ready to deploy to Cloudflare using *.workers.dev domains
-    // session: {
-    //   cookieCache: {
-    //     enabled: true,
-    //     maxAge: 60,
-    //   },
-    // },
+    session: {
+      cookieCache: {
+        enabled: true,
+        maxAge: 60,
+      },
+    },
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {
@@ -58,12 +57,10 @@ export function createAuth() {
         secure: true,
         httpOnly: true,
       },
-      // uncomment crossSubDomainCookies setting when ready to deploy and replace <your-workers-subdomain> with your actual workers subdomain
-      // https://developers.cloudflare.com/workers/wrangler/configuration/#workersdev
-      // crossSubDomainCookies: {
-      //   enabled: true,
-      //   domain: "<your-workers-subdomain>",
-      // },
+      crossSubDomainCookies: {
+        enabled: true,
+        domain: "avishkamadushan4338.workers.dev",
+      },
     },
   });
 }
