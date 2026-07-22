@@ -1,0 +1,24 @@
+{
+  "name": "@dcsp-letter-management/domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@dcsp-letter-management/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

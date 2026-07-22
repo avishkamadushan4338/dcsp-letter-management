@@ -1,0 +1,27 @@
+{
+  "name": "@dcsp-letter-management/email",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@dcsp-letter-management/domain": "workspace:*",
+    "@dcsp-letter-management/env": "workspace:*",
+    "nodemailer": "^7.0.9"
+  },
+  "devDependencies": {
+    "@dcsp-letter-management/config": "workspace:*",
+    "@types/nodemailer": "^7.0.4",
+    "typescript": "catalog:"
+  }
+}

@@ -1,0 +1,3 @@
+{
+  "extends": "@dcsp-letter-management/config/tsconfig.base.json"
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@dcsp-letter-management/infra",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "destroy": "alchemy destroy --profile=admin --stage=prod",
+    "dev": "bun alchemy dev --profile=admin ",
+    "deploy": "NODE_ENV=production bun alchemy deploy --profile admin --stage=prod"
+  },
+  "dependencies": {
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@dcsp-letter-management/config": "workspace:*",
+    "alchemy": "catalog:",
+    "typescript": "catalog:"
+  }
+}
