@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@dcsp-letter-managemen
 import { Checkbox } from "@dcsp-letter-management/ui/components/checkbox"
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldSeparator
@@ -49,8 +48,7 @@ export function SignIn({
     redirectTo,
     socialProviders,
     viewPaths,
-    navigate,
-    Link
+    navigate
   } = useAuth()
 
   const { fetchOptions, resetFetchOptions } = useFetchOptions()
@@ -281,28 +279,6 @@ export function SignIn({
           )}
         </div>
 
-        <div className="flex flex-col gap-3 items-center w-full mt-4">
-          {emailAndPassword?.enabled && emailAndPassword?.forgotPassword && (
-            <Link
-              href={`${basePaths.auth}/${viewPaths.auth.forgotPassword}`}
-              className="self-center text-sm underline-offset-4 hover:underline"
-            >
-              {localization.auth.forgotPasswordLink}
-            </Link>
-          )}
-
-          {emailAndPassword?.enabled && (
-            <FieldDescription className="text-center">
-              {localization.auth.needToCreateAnAccount}{" "}
-              <Link
-                href={`${basePaths.auth}/${viewPaths.auth.signUp}`}
-                className="underline underline-offset-4"
-              >
-                {localization.auth.signUp}
-              </Link>
-            </FieldDescription>
-          )}
-        </div>
       </CardContent>
     </Card>
   )

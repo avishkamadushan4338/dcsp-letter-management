@@ -4,13 +4,7 @@ import {
   useSession,
   useSetActiveSession
 } from "@better-auth-ui/react"
-import {
-  ChevronsUpDown,
-  LogIn,
-  LogOut,
-  Settings,
-  UserPlus2
-} from "lucide-react"
+import { ChevronsUpDown, LogIn, LogOut, Settings } from "lucide-react"
 import { isValidElement, type ReactElement, type ReactNode } from "react"
 
 import { buttonVariants } from "@dcsp-letter-management/ui/components/button"
@@ -235,18 +229,6 @@ export function UserButton({
               <LogIn className="text-muted-foreground" />
 
               {localization.auth.signIn}
-            </DropdownMenuItem>
-
-            <DropdownMenuItem
-              onClick={() =>
-                navigate({
-                  to: `${basePaths.auth}/${viewPaths.auth.signUp}`
-                })
-              }
-            >
-              <UserPlus2 className="text-muted-foreground" />
-
-              {localization.auth.signUp}
             </DropdownMenuItem>
 
             {plugins.flatMap((plugin) =>

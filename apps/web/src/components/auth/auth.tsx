@@ -28,6 +28,13 @@ export type AuthProps = {
  */
 const PASSWORD_ONLY_VIEWS = ["signUp", "forgotPassword", "resetPassword"]
 
+/**
+ * Self-service views that are always disabled for this app: accounts are
+ * provisioned by DCS staff, not self-registered, and password resets go
+ * through DCS rather than an emailed reset link.
+ */
+const DISABLED_VIEWS = ["signUp", "forgotPassword"]
+
 const AUTH_VIEWS: Partial<Record<AuthView, ComponentType<AuthProps>>> = {
   signIn: SignIn,
   signOut: SignOut,
@@ -76,9 +83,10 @@ export function Auth({
   // where a plugin's `fallbackViews.auth.signIn` (e.g. magic link) takes
   // over as the primary entry point.
   const shouldRedirectToSignIn =
-    !emailAndPassword?.enabled &&
-    authView &&
-    PASSWORD_ONLY_VIEWS.includes(authView)
+    (!emailAndPassword?.enabled &&
+      authView &&
+      PASSWORD_ONLY_VIEWS.includes(authView)) ||
+    (authView && DISABLED_VIEWS.includes(authView))
 
   useEffect(() => {
     if (shouldRedirectToSignIn) {

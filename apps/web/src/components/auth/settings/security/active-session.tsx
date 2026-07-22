@@ -56,7 +56,9 @@ export function ActiveSession({ activeSession }: ActiveSessionProps) {
   )
 
   const isCurrentSession = activeSession.token === session?.session.token
-  const ua = Bowser.parse(activeSession.userAgent || "")
+  const ua = activeSession.userAgent
+    ? Bowser.parse(activeSession.userAgent)
+    : ({ browser: {}, os: {}, platform: {} } as Bowser.Parser.ParsedResult)
   const isMobile =
     ua.platform.type === "mobile" || ua.platform.type === "tablet"
 

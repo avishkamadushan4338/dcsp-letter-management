@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@dcsp-letter-management/ui/components/dialog";
-import { Field, FieldError, FieldLabel } from "@dcsp-letter-management/ui/components/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@dcsp-letter-management/ui/components/field";
 import {
   Select,
   SelectContent,
