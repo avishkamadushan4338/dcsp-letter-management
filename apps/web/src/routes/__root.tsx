@@ -47,7 +47,7 @@ function RootComponent() {
     <>
       <HeadContent />
       <Providers>
-        <div className="h-svh flex flex-col">
+        <div className="h-svh flex flex-col print:h-auto">
           <Outlet />
         </div>
         <Toaster richColors />

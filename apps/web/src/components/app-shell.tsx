@@ -23,6 +23,8 @@ const DCS_LINKS: NavLink[] = [
 const SUBJECT_OFFICER_LINKS: NavLink[] = [
   { to: "/letters", label: "Letters" },
   { to: "/letters/new", label: "New Letter" },
+  { to: "/print-numbers", label: "Print Numbers" },
+  { to: "/letters-summary", label: "Summary" },
   { to: "/officers", label: "Officers" },
 ];
 
@@ -37,8 +39,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="border-b">
+    <div className="flex h-full flex-col print:h-auto">
+      <header className="border-b print:hidden">
         <div className="flex items-center justify-between gap-4 px-4 py-3">
           <Link to="/letters" className="font-semibold">
             DCSP Letter Management
@@ -63,7 +65,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
       </header>
-      <main className="flex-1 overflow-y-auto p-4">{children}</main>
+      <main className="flex-1 overflow-y-auto p-4 print:overflow-visible">{children}</main>
     </div>
   );
 }

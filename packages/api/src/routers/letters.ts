@@ -2,7 +2,7 @@ import { appConfig, letter, letterLink, letterReassignment, officer } from "@dcs
 import { divisionCodeSchema, type DivisionCode } from "@dcsp-letter-management/domain/division";
 import { letterStatusSchema } from "@dcsp-letter-management/domain/letter-status";
 import { ORPCError } from "@orpc/server";
-import { and, asc, count, desc, eq, gte, isNull, like, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNull, like, ne, or } from "drizzle-orm";
 import { z } from "zod";
 
 import { dcsProcedure, staffProcedure, subjectOfficerProcedure } from "../index";
@@ -369,15 +369,33 @@ export const lettersRouter = {
     return updated;
   }),
 
-  /** "Print Numbers" utility (APP_FLOW.md §6): every number issued today. */
-  printNumbersToday: dcsProcedure.handler(async ({ context }) => {
+  /**
+   * "Print Numbers" utility (APP_FLOW.md §6): every number issued today.
+   * Scoped to letters the caller's own role created — DCS and the Subject Officer each
+   * print only their own numbers, so the same slip never gets printed twice.
+   */
+  printNumbersToday: staffProcedure.handler(async ({ context }) => {
     const now = new Date();
     const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
     return context.db.query.letter.findMany({
-      where: gte(letter.createdAt, startOfDay),
+      where: and(gte(letter.createdAt, startOfDay), eq(letter.createdByRole, context.role)),
       with: { relevantOfficer: true },
       orderBy: [asc(letter.division), asc(letter.number)],
+    });
+  }),
+
+  /**
+   * Letters register for the Subject Officer to print and physically sign off on.
+   * Excludes anything still `pending_review` — a Subject-Officer-originated letter
+   * sent "via DCS" only shows up here once DCS actually reviews it and assigns a
+   * Relevant Officer; letters sent directly (by DCS or "Send Directly") appear right away.
+   */
+  printSummary: subjectOfficerProcedure.handler(async ({ context }) => {
+    return context.db.query.letter.findMany({
+      where: and(eq(letter.subjectOfficerId, context.session.user.id), ne(letter.status, "pending_review")),
+      with: { relevantOfficer: true },
+      orderBy: [asc(letter.receivedDate)],
     });
   }),
 };
