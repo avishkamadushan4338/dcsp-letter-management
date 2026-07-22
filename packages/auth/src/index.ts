@@ -18,6 +18,7 @@ export type Auth = ReturnType<typeof createAuth>;
 
 export function createAuth() {
   const db = createDb();
+  const isLocalDev = env.BETTER_AUTH_URL.includes("localhost");
 
   return betterAuth({
     database: drizzleAdapter(db, {
@@ -53,12 +54,12 @@ export function createAuth() {
     baseURL: env.BETTER_AUTH_URL,
     advanced: {
       defaultCookieAttributes: {
-        sameSite: "none",
-        secure: true,
+        sameSite: isLocalDev ? "lax" : "none",
+        secure: !isLocalDev,
         httpOnly: true,
       },
       crossSubDomainCookies: {
-        enabled: true,
+        enabled: !isLocalDev,
         domain: "avishkamadushan4338.workers.dev",
       },
     },
