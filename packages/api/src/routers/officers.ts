@@ -1,5 +1,6 @@
 import { officer } from "@dcsp-letter-management/db/schema/letters";
 import { divisionCodeSchema } from "@dcsp-letter-management/domain/division";
+import { officerPositionSchema } from "@dcsp-letter-management/domain/officer-position";
 import { ORPCError } from "@orpc/server";
 import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -26,11 +27,14 @@ export const officersRouter = {
    * Active-only, minimal-field roster for the public "Relevant Officer"
    * pickers (DCS/Subject Officer new-letter forms, and the Relevant
    * Officer's own "reassign to" list on their unauthenticated link page).
+   * Division is optional — DCS reviewing a "sent via DCS" letter (APP_FLOW.md
+   * §4, Option B) has no division to scope to yet, so it picks from every
+   * active officer across all divisions.
    */
-  listActive: publicProcedure.input(z.object({ division: divisionCodeSchema })).handler(async ({ context, input }) => {
+  listActive: publicProcedure.input(z.object({ division: divisionCodeSchema.optional() })).handler(async ({ context, input }) => {
     const officers = await context.db.query.officer.findMany({
-      where: and(eq(officer.division, input.division), eq(officer.active, true)),
-      orderBy: [asc(officer.name)],
+      where: input.division ? and(eq(officer.division, input.division), eq(officer.active, true)) : eq(officer.active, true),
+      orderBy: input.division ? [asc(officer.name)] : [asc(officer.division), asc(officer.name)],
       columns: { id: true, name: true, position: true, division: true },
     });
     return officers;
@@ -41,7 +45,7 @@ export const officersRouter = {
       z.object({
         name: z.string().min(1),
         email: z.email(),
-        position: z.string().min(1),
+        position: officerPositionSchema,
         division: divisionCodeSchema,
       }),
     )

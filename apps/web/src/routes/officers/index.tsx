@@ -1,4 +1,5 @@
 import { DIVISION_CODES, DIVISION_NAMES, type DivisionCode } from "@dcsp-letter-management/domain/division";
+import { OFFICER_POSITIONS, type OfficerPosition } from "@dcsp-letter-management/domain/officer-position";
 import { Badge } from "@dcsp-letter-management/ui/components/badge";
 import { Button } from "@dcsp-letter-management/ui/components/button";
 import {
@@ -125,9 +126,9 @@ function AddOfficerDialog() {
   );
 
   const form = useForm({
-    defaultValues: { name: "", email: "", position: "", division: "" as DivisionCode | "" },
+    defaultValues: { name: "", email: "", position: "" as OfficerPosition | "", division: "" as DivisionCode | "" },
     onSubmit: async ({ value }) => {
-      if (!value.division) return;
+      if (!value.division || !value.position) return;
       await createMutation.mutateAsync({ name: value.name, email: value.email, position: value.position, division: value.division });
     },
   });
@@ -170,7 +171,18 @@ function AddOfficerDialog() {
               {(field) => (
                 <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
                   <FieldLabel>Position</FieldLabel>
-                  <Input value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
+                  <Select value={field.state.value} onValueChange={(value) => field.handleChange(value as OfficerPosition)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose a position" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {OFFICER_POSITIONS.map((position) => (
+                        <SelectItem key={position} value={position}>
+                          {position}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FieldError errors={field.state.meta.errors} />
                 </Field>
               )}
