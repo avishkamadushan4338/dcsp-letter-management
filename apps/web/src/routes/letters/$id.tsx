@@ -25,6 +25,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
+import { MultiOfficerNotice } from "@/components/letters/multi-officer-notice";
 import { RelevantOfficersField } from "@/components/letters/relevant-officers-field";
 import { LetterStatusBadge } from "@/components/letters/status-badge";
 import Loader from "@/components/loader";
@@ -234,6 +235,7 @@ function SubjectOfficerActionCard({ letter }: { letter: LetterDetail }) {
         <CardTitle>Your action</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
+        <MultiOfficerNotice officerNames={letter.relevantOfficers.map((assignment) => assignment.officer.name)} />
         {letter.status === "sent_to_subject" ? (
           <Button disabled={markReceived.isPending} onClick={() => markReceived.mutate({ id: letter.id })}>
             {markReceived.isPending ? "Marking…" : "Mark Received"}

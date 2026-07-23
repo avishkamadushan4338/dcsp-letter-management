@@ -27,6 +27,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import Loader from "@/components/loader";
+import { MultiOfficerNotice } from "@/components/letters/multi-officer-notice";
 import { LetterStatusBadge } from "@/components/letters/status-badge";
 import { formatDate } from "@/lib/format";
 import { orpc } from "@/utils/orpc";
@@ -98,7 +99,10 @@ function LinkContent({ token, data }: { token: string; data: LinkData }) {
         </dl>
 
         {role === "subjectOfficer" ? (
-          <SubjectOfficerActions token={token} status={letter.status} />
+          <div className="flex flex-col gap-3">
+            <MultiOfficerNotice officerNames={letter.relevantOfficers.map((assignment) => assignment.officer.name)} />
+            <SubjectOfficerActions token={token} status={letter.status} />
+          </div>
         ) : (
           <RelevantOfficerActions
             token={token}
