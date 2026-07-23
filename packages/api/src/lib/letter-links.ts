@@ -46,11 +46,19 @@ export async function issueLetterLink(db: Db, target: LetterLinkTarget) {
     reassignment: target.reassignment,
   };
 
-  await sendMail({
-    to: target.to,
-    subject: letterLinkEmailSubject(emailInput),
-    html: letterLinkEmailHtml(emailInput),
-  });
+  // Best-effort — the link itself is already persisted and is the source of
+  // truth; a flaky/unreachable mail server shouldn't fail the caller's
+  // mutation (letter creation, review, reassignment, ...) that already
+  // succeeded.
+  try {
+    await sendMail({
+      to: target.to,
+      subject: letterLinkEmailSubject(emailInput),
+      html: letterLinkEmailHtml(emailInput),
+    });
+  } catch (error) {
+    console.error(`Failed to email ${target.role} link for letter ${target.referenceNumber}:`, error);
+  }
 
   return token;
 }
