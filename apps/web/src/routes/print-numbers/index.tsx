@@ -1,4 +1,3 @@
-import { DIVISION_NAMES } from "@dcsp-letter-management/domain/division";
 import { Button } from "@dcsp-letter-management/ui/components/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@dcsp-letter-management/ui/components/empty";
 import { useQuery } from "@tanstack/react-query";
@@ -6,6 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/app-shell";
 import Loader from "@/components/loader";
+import { formatDate } from "@/lib/format";
 import { orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/print-numbers/")({
@@ -24,10 +24,10 @@ function PrintNumbersPage() {
       ? letter.relevantOfficers.map((assignment) => ({
           key: assignment.id,
           referenceNumber: letter.referenceNumber,
-          division: letter.division,
-          officerName: assignment.officer.name,
+          fromWhom: letter.fromWhom,
+          receivedDate: letter.receivedDate,
         }))
-      : [{ key: letter.id, referenceNumber: letter.referenceNumber, division: letter.division, officerName: "—" }],
+      : [{ key: letter.id, referenceNumber: letter.referenceNumber, fromWhom: letter.fromWhom, receivedDate: letter.receivedDate }],
   );
 
   return (
@@ -54,7 +54,7 @@ function PrintNumbersPage() {
           <div className="flex flex-col">
             {strips.map((strip) => (
               <div key={strip.key} className="break-inside-avoid border-b py-4 text-base font-bold">
-                {strip.referenceNumber} - {strip.division ? DIVISION_NAMES[strip.division] : "Pending review"} - {strip.officerName}
+                {strip.referenceNumber} - ({strip.fromWhom}) | {formatDate(strip.receivedDate)}
               </div>
             ))}
           </div>
