@@ -33,13 +33,13 @@ const ALL = "__all__";
 type LetterListItem = {
   id: string;
   referenceNumber: string;
-  division: DivisionCode;
+  division: DivisionCode | null;
   subject: string;
   fromWhom: string;
   status: LetterStatus;
   createdByRole: "dcs" | "subjectOfficer";
   receivedDate: string | Date;
-  relevantOfficer: { name: string } | null;
+  relevantOfficers: { officer: { name: string } }[];
   subjectOfficer: { name: string } | null;
 };
 
@@ -50,12 +50,12 @@ const columns: ColumnDef<LetterListItem>[] = [
   {
     id: "division",
     header: "Division",
-    cell: ({ row }) => DIVISION_NAMES[row.original.division],
+    cell: ({ row }) => (row.original.division ? DIVISION_NAMES[row.original.division] : "—"),
   },
   {
     id: "relevantOfficer",
     header: "Relevant Officer",
-    cell: ({ row }) => row.original.relevantOfficer?.name ?? "—",
+    cell: ({ row }) => row.original.relevantOfficers.map((assignment) => assignment.officer.name).join(", ") || "—",
   },
   {
     id: "receivedDate",

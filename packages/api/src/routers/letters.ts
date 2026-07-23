@@ -1,8 +1,8 @@
-import { appConfig, letter, letterLink, letterReassignment, officer } from "@dcsp-letter-management/db/schema/letters";
+import { appConfig, letter, letterLink, letterReassignment, letterRelevantOfficer, officer } from "@dcsp-letter-management/db/schema/letters";
 import { divisionCodeSchema, type DivisionCode } from "@dcsp-letter-management/domain/division";
 import { letterStatusSchema } from "@dcsp-letter-management/domain/letter-status";
 import { ORPCError } from "@orpc/server";
-import { and, asc, count, desc, eq, gte, isNull, like, ne, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, like, ne, or } from "drizzle-orm";
 import { z } from "zod";
 
 import { dcsProcedure, staffProcedure, subjectOfficerProcedure } from "../index";
@@ -12,14 +12,69 @@ import { previewNextLetterNumber, reserveNextLetterNumber } from "../lib/letter-
 
 const SINGLETON_ID = "singleton";
 
-async function requireActiveOfficer(db: Parameters<typeof issueLetterLink>[0], officerId: string, division: DivisionCode) {
-  const found = await db.query.officer.findFirst({
-    where: and(eq(officer.id, officerId), eq(officer.division, division), eq(officer.active, true)),
-  });
-  if (!found) {
-    throw new ORPCError("BAD_REQUEST", { message: "That officer isn't active in this division." });
+/**
+ * Confirms every requested officer is active, no id is repeated, and — when
+ * `division` is given — all belong to it. When `division` is omitted (DCS
+ * reviewing a "sent via DCS" letter, APP_FLOW.md §4 Option B, which has no
+ * division of its own yet), the officers are instead required to all share
+ * one division among themselves, which becomes the letter's division.
+ */
+async function requireActiveOfficers(db: Parameters<typeof issueLetterLink>[0], officerIds: string[], division?: DivisionCode) {
+  if (officerIds.length === 0) {
+    throw new ORPCError("BAD_REQUEST", { message: "Pick at least one Relevant Officer." });
   }
-  return found;
+  if (new Set(officerIds).size !== officerIds.length) {
+    throw new ORPCError("BAD_REQUEST", { message: "The same officer was picked more than once." });
+  }
+
+  const conditions = [inArray(officer.id, officerIds), eq(officer.active, true)];
+  if (division) {
+    conditions.push(eq(officer.division, division));
+  }
+  const found = await db.query.officer.findMany({ where: and(...conditions) });
+  if (found.length !== officerIds.length) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: division ? "One or more officers aren't active in this division." : "One or more officers aren't active.",
+    });
+  }
+
+  const divisions = new Set(found.map((one) => one.division));
+  if (divisions.size > 1) {
+    throw new ORPCError("BAD_REQUEST", { message: "All Relevant Officers on a letter must be from the same division." });
+  }
+
+  return { officers: found, division: found[0]!.division };
+}
+
+/**
+ * Inserts one independent assignment row per Relevant Officer and emails each
+ * their own link (APP_FLOW.md §1, §5) — each officer acts entirely on their
+ * own from here on.
+ */
+async function assignRelevantOfficers(
+  db: Parameters<typeof issueLetterLink>[0],
+  officers: { id: string; email: string }[],
+  params: { letterId: string; referenceNumber: string; subject: string; fromWhom: string; division: DivisionCode },
+) {
+  for (const one of officers) {
+    const [assignment] = await db
+      .insert(letterRelevantOfficer)
+      .values({ id: newId(), letterId: params.letterId, officerId: one.id })
+      .returning();
+    if (!assignment) {
+      throw new ORPCError("INTERNAL_SERVER_ERROR");
+    }
+    await issueLetterLink(db, {
+      letterId: params.letterId,
+      role: "relevantOfficer",
+      to: one.email,
+      referenceNumber: params.referenceNumber,
+      subject: params.subject,
+      fromWhom: params.fromWhom,
+      division: params.division,
+      letterRelevantOfficerId: assignment.id,
+    });
+  }
 }
 
 /** Loads a letter and confirms the calling Subject Officer actually owns it (mirrors the `get` check). */
@@ -35,8 +90,8 @@ async function requireOwnSubjectLetter(db: Parameters<typeof issueLetterLink>[0]
 }
 
 export const lettersRouter = {
-  previewNextNumber: staffProcedure.input(z.object({ division: divisionCodeSchema })).handler(async ({ context, input }) => {
-    return previewNextLetterNumber(context.db, input.division);
+  previewNextNumber: staffProcedure.handler(async ({ context }) => {
+    return previewNextLetterNumber(context.db);
   }),
 
   list: staffProcedure
@@ -68,7 +123,7 @@ export const lettersRouter = {
       const [items, totalRows] = await Promise.all([
         context.db.query.letter.findMany({
           where,
-          with: { relevantOfficer: true, subjectOfficer: true },
+          with: { relevantOfficers: { with: { officer: true } }, subjectOfficer: true },
           orderBy: [desc(letter.createdAt)],
           limit: input.pageSize,
           offset: (input.page - 1) * input.pageSize,
@@ -91,7 +146,7 @@ export const lettersRouter = {
     const found = await context.db.query.letter.findFirst({
       where: eq(letter.id, input.id),
       with: {
-        relevantOfficer: true,
+        relevantOfficers: { with: { officer: true } },
         subjectOfficer: true,
         reassignments: {
           with: { fromOfficer: true, toOfficer: true },
@@ -99,6 +154,7 @@ export const lettersRouter = {
         },
         links: {
           columns: { id: true, role: true, invalidatedAt: true, createdAt: true },
+          with: { relevantOfficerAssignment: { with: { officer: { columns: { name: true } } } } },
         },
       },
     });
@@ -120,7 +176,7 @@ export const lettersRouter = {
         subject: z.string().min(1),
         fromWhom: z.string().min(1),
         receivedDate: z.coerce.date(),
-        relevantOfficerId: z.string(),
+        relevantOfficerIds: z.array(z.string()).min(1),
       }),
     )
     .handler(async ({ context, input }) => {
@@ -128,7 +184,7 @@ export const lettersRouter = {
       if (!config?.currentSubjectOfficerId) {
         throw new ORPCError("BAD_REQUEST", { message: "Set a Subject Officer before creating letters." });
       }
-      const relevantOfficer = await requireActiveOfficer(context.db, input.relevantOfficerId, input.division);
+      const { officers: relevantOfficers } = await requireActiveOfficers(context.db, input.relevantOfficerIds, input.division);
       const subjectOfficer = await context.db.query.user.findFirst({
         where: (userTable, { eq: eqCol }) => eqCol(userTable.id, config.currentSubjectOfficerId as string),
       });
@@ -136,7 +192,7 @@ export const lettersRouter = {
         throw new ORPCError("BAD_REQUEST", { message: "The current Subject Officer account no longer exists." });
       }
 
-      const { number, referenceNumber } = await reserveNextLetterNumber(context.db, input.division);
+      const { number, referenceNumber } = await reserveNextLetterNumber(context.db);
 
       // `created` (APP_FLOW.md §2) is a passing state — DCS submitting the
       // form and it going out to both officers happen in the same request,
@@ -155,7 +211,6 @@ export const lettersRouter = {
           status: "sent_to_subject",
           createdByRole: "dcs",
           subjectOfficerId: subjectOfficer.id,
-          relevantOfficerId: relevantOfficer.id,
         })
         .returning();
 
@@ -170,16 +225,14 @@ export const lettersRouter = {
         referenceNumber,
         subject: created.subject,
         fromWhom: created.fromWhom,
-        division: created.division,
+        division: input.division,
       });
-      await issueLetterLink(context.db, {
+      await assignRelevantOfficers(context.db, relevantOfficers, {
         letterId: created.id,
-        role: "relevantOfficer",
-        to: relevantOfficer.email,
         referenceNumber,
         subject: created.subject,
         fromWhom: created.fromWhom,
-        division: created.division,
+        division: input.division,
       });
 
       return created;
@@ -193,12 +246,12 @@ export const lettersRouter = {
         subject: z.string().min(1),
         fromWhom: z.string().min(1),
         receivedDate: z.coerce.date(),
-        relevantOfficerId: z.string(),
+        relevantOfficerIds: z.array(z.string()).min(1),
       }),
     )
     .handler(async ({ context, input }) => {
-      const relevantOfficer = await requireActiveOfficer(context.db, input.relevantOfficerId, input.division);
-      const { number, referenceNumber } = await reserveNextLetterNumber(context.db, input.division);
+      const { officers: relevantOfficers } = await requireActiveOfficers(context.db, input.relevantOfficerIds, input.division);
+      const { number, referenceNumber } = await reserveNextLetterNumber(context.db);
       const now = new Date();
 
       const [created] = await context.db
@@ -214,7 +267,6 @@ export const lettersRouter = {
           status: "sent_to_relevant",
           createdByRole: "subjectOfficer",
           subjectOfficerId: context.session.user.id,
-          relevantOfficerId: relevantOfficer.id,
           subjectReceivedAt: now,
           subjectForwardedAt: now,
         })
@@ -224,31 +276,33 @@ export const lettersRouter = {
         throw new ORPCError("INTERNAL_SERVER_ERROR");
       }
 
-      await issueLetterLink(context.db, {
+      await assignRelevantOfficers(context.db, relevantOfficers, {
         letterId: created.id,
-        role: "relevantOfficer",
-        to: relevantOfficer.email,
         referenceNumber,
         subject: created.subject,
         fromWhom: created.fromWhom,
-        division: created.division,
+        division: input.division,
       });
 
       return created;
     }),
 
-  /** Flow 2, Option B (APP_FLOW.md §4): Subject Officer sends via DCS review. */
+  /**
+   * Flow 2, Option B (APP_FLOW.md §4): Subject Officer sends via DCS review.
+   * No division is picked here — they don't know who should handle it, so
+   * there's nothing to scope a division to yet. DCS derives it from whichever
+   * Relevant Officer they assign on review.
+   */
   createBySubjectOfficerPending: subjectOfficerProcedure
     .input(
       z.object({
-        division: divisionCodeSchema,
         subject: z.string().min(1),
         fromWhom: z.string().min(1),
         receivedDate: z.coerce.date(),
       }),
     )
     .handler(async ({ context, input }) => {
-      const { number, referenceNumber } = await reserveNextLetterNumber(context.db, input.division);
+      const { number, referenceNumber } = await reserveNextLetterNumber(context.db);
 
       const [created] = await context.db
         .insert(letter)
@@ -256,7 +310,6 @@ export const lettersRouter = {
           id: newId(),
           referenceNumber,
           number,
-          division: input.division,
           subject: input.subject,
           fromWhom: input.fromWhom,
           receivedDate: input.receivedDate,
@@ -272,9 +325,14 @@ export const lettersRouter = {
       return created;
     }),
 
-  /** DCS assigns a Relevant Officer to a Flow-2-Option-B letter (APP_FLOW.md §4). */
+  /**
+   * DCS assigns Relevant Officer(s) to a Flow-2-Option-B letter (APP_FLOW.md
+   * §4) — picked from the full roster since the letter has no division yet;
+   * the letter's division is then set to match theirs (they must all share
+   * one — enforced by `requireActiveOfficers`).
+   */
   review: dcsProcedure
-    .input(z.object({ id: z.string(), relevantOfficerId: z.string() }))
+    .input(z.object({ id: z.string(), relevantOfficerIds: z.array(z.string()).min(1) }))
     .handler(async ({ context, input }) => {
       const found = await context.db.query.letter.findFirst({ where: eq(letter.id, input.id) });
       if (!found) {
@@ -284,7 +342,7 @@ export const lettersRouter = {
         throw new ORPCError("CONFLICT", { message: "This letter has already been reviewed." });
       }
 
-      const relevantOfficer = await requireActiveOfficer(context.db, input.relevantOfficerId, found.division);
+      const { officers: relevantOfficers, division } = await requireActiveOfficers(context.db, input.relevantOfficerIds);
       const subjectOfficer = await context.db.query.user.findFirst({
         where: (userTable, { eq: eqCol }) => eqCol(userTable.id, found.subjectOfficerId),
       });
@@ -295,7 +353,7 @@ export const lettersRouter = {
       const [updated] = await context.db
         .update(letter)
         .set({
-          relevantOfficerId: relevantOfficer.id,
+          division,
           reviewedAt: new Date(),
           status: "sent_to_subject",
         })
@@ -313,16 +371,14 @@ export const lettersRouter = {
         referenceNumber: updated.referenceNumber,
         subject: updated.subject,
         fromWhom: updated.fromWhom,
-        division: updated.division,
+        division,
       });
-      await issueLetterLink(context.db, {
+      await assignRelevantOfficers(context.db, relevantOfficers, {
         letterId: updated.id,
-        role: "relevantOfficer",
-        to: relevantOfficer.email,
         referenceNumber: updated.referenceNumber,
         subject: updated.subject,
         fromWhom: updated.fromWhom,
-        division: updated.division,
+        division,
       });
 
       return updated;
@@ -380,7 +436,7 @@ export const lettersRouter = {
 
     return context.db.query.letter.findMany({
       where: and(gte(letter.createdAt, startOfDay), eq(letter.createdByRole, context.role)),
-      with: { relevantOfficer: true },
+      with: { relevantOfficers: { with: { officer: true } } },
       orderBy: [asc(letter.division), asc(letter.number)],
     });
   }),
@@ -394,7 +450,7 @@ export const lettersRouter = {
   printSummary: subjectOfficerProcedure.handler(async ({ context }) => {
     return context.db.query.letter.findMany({
       where: and(eq(letter.subjectOfficerId, context.session.user.id), ne(letter.status, "pending_review")),
-      with: { relevantOfficer: true },
+      with: { relevantOfficers: { with: { officer: true } } },
       orderBy: [asc(letter.receivedDate)],
     });
   }),

@@ -18,6 +18,8 @@ export type LetterLinkTarget = {
   subject: string | null;
   fromWhom: string | null;
   division: DivisionCode;
+  /** Set only for role="relevantOfficer" links — which of the letter's (possibly several) independent officer assignments this link belongs to. */
+  letterRelevantOfficerId?: string;
   reassignment?: { fromOfficerName: string; note: string | null };
 };
 
@@ -30,6 +32,7 @@ export async function issueLetterLink(db: Db, target: LetterLinkTarget) {
     token,
     letterId: target.letterId,
     role: target.role,
+    letterRelevantOfficerId: target.letterRelevantOfficerId,
   });
 
   const actionUrl = `${env.CORS_ORIGIN}/l/${token}`;

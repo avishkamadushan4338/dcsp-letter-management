@@ -1,7 +1,7 @@
 import { DIVISION_CODES } from "@dcsp-letter-management/domain/division";
 import { LETTER_STATUSES } from "@dcsp-letter-management/domain/letter-status";
 import { relations, sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
 
 import { user } from "./auth";
 
@@ -46,13 +46,13 @@ export const appConfig = sqliteTable("app_config", {
 });
 
 /**
- * Per-division running counter backing the `DCSP/<division>/<00001-99999>`
- * reference number (APP_FLOW.md §3.1). Incremented atomically the moment a
- * division is picked — before the rest of the letter form is even filled
- * in — and wraps back to 1 after 99999.
+ * Single global running counter backing the `DCSP/<000001-999999>`
+ * reference number (APP_FLOW.md §3.1) — shared across every division, not
+ * per-division. Incremented atomically the moment a letter is created, and
+ * wraps back to 1 after 999999.
  */
 export const letterSequence = sqliteTable("letter_sequence", {
-  division: text("division", { enum: DIVISION_CODES }).primaryKey(),
+  id: text("id").primaryKey().default("singleton"),
   lastNumber: integer("last_number").default(0).notNull(),
 });
 
@@ -61,7 +61,10 @@ export const letter = sqliteTable(
   {
     id: text("id").primaryKey(),
     referenceNumber: text("reference_number").notNull().unique(),
-    division: text("division", { enum: DIVISION_CODES }).notNull(),
+    // Null only while `pending_review` and sent "via DCS" (Flow 2, Option B) —
+    // the Subject Officer no longer picks a division for that path; it's
+    // derived from whichever Relevant Officer DCS assigns on review.
+    division: text("division", { enum: DIVISION_CODES }),
     number: integer("number").notNull(),
     subject: text("subject").notNull(),
     fromWhom: text("from_whom").notNull(),
@@ -77,16 +80,10 @@ export const letter = sqliteTable(
     subjectOfficerId: text("subject_officer_id")
       .notNull()
       .references(() => user.id),
-    // Null only while `pending_review` (Flow 2, Option B) — DCS assigns this
-    // on review.
-    relevantOfficerId: text("relevant_officer_id").references(() => officer.id),
 
     reviewedAt: integer("reviewed_at", { mode: "timestamp_ms" }),
     subjectReceivedAt: integer("subject_received_at", { mode: "timestamp_ms" }),
     subjectForwardedAt: integer("subject_forwarded_at", { mode: "timestamp_ms" }),
-    relevantReceivedAt: integer("relevant_received_at", { mode: "timestamp_ms" }),
-    actionTakenAt: integer("action_taken_at", { mode: "timestamp_ms" }),
-    actionNotes: text("action_notes"),
 
     ...timestamps,
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
@@ -94,10 +91,35 @@ export const letter = sqliteTable(
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
+  (table) => [index("letter_status_idx").on(table.status), index("letter_division_idx").on(table.division)],
+);
+
+/**
+ * One row per Relevant Officer independently assigned to a letter — a letter
+ * can go to several officers at once, each acting entirely on their own (own
+ * link, own "received"/"action taken", own notes). The letter's overall
+ * `status` (APP_FLOW.md §2) is recomputed from these rows: `with_relevant_officer`
+ * once any one has received, `action_taken` only once *all* have.
+ */
+export const letterRelevantOfficer = sqliteTable(
+  "letter_relevant_officer",
+  {
+    id: text("id").primaryKey(),
+    letterId: text("letter_id")
+      .notNull()
+      .references(() => letter.id, { onDelete: "cascade" }),
+    officerId: text("officer_id")
+      .notNull()
+      .references(() => officer.id),
+    receivedAt: integer("received_at", { mode: "timestamp_ms" }),
+    actionTakenAt: integer("action_taken_at", { mode: "timestamp_ms" }),
+    actionNotes: text("action_notes"),
+    ...timestamps,
+  },
   (table) => [
-    index("letter_status_idx").on(table.status),
-    index("letter_division_idx").on(table.division),
-    index("letter_relevant_officer_idx").on(table.relevantOfficerId),
+    index("letter_relevant_officer_letter_idx").on(table.letterId),
+    index("letter_relevant_officer_officer_idx").on(table.officerId),
+    unique("letter_relevant_officer_letter_officer_unique").on(table.letterId, table.officerId),
   ],
 );
 
@@ -113,6 +135,11 @@ export const letterReassignment = sqliteTable(
     letterId: text("letter_id")
       .notNull()
       .references(() => letter.id, { onDelete: "cascade" }),
+    // Which officer-track this handoff belongs to — a letter can have several
+    // independent Relevant Officer assignments, each with its own history.
+    letterRelevantOfficerId: text("letter_relevant_officer_id")
+      .notNull()
+      .references(() => letterRelevantOfficer.id, { onDelete: "cascade" }),
     fromOfficerId: text("from_officer_id")
       .notNull()
       .references(() => officer.id),
@@ -139,6 +166,10 @@ export const letterLink = sqliteTable(
       .notNull()
       .references(() => letter.id, { onDelete: "cascade" }),
     role: text("role", { enum: ["subjectOfficer", "relevantOfficer"] }).notNull(),
+    // Set only for role="relevantOfficer" links — disambiguates which of a
+    // letter's (possibly several) independent officer-assignments this
+    // specific link belongs to.
+    letterRelevantOfficerId: text("letter_relevant_officer_id").references(() => letterRelevantOfficer.id, { onDelete: "cascade" }),
     // Set when this specific officer's link is spent (they forwarded /
     // recorded an action) or invalidated (reassigned away). A fresh row is
     // minted for whoever takes over, rather than mutating this one.
@@ -156,7 +187,7 @@ export const appConfigRelations = relations(appConfig, ({ one }) => ({
 }));
 
 export const officerRelations = relations(officer, ({ many }) => ({
-  letters: many(letter),
+  relevantAssignments: many(letterRelevantOfficer),
   reassignmentsFrom: many(letterReassignment, { relationName: "reassignmentFrom" }),
   reassignmentsTo: many(letterReassignment, { relationName: "reassignmentTo" }),
 }));
@@ -166,18 +197,30 @@ export const letterRelations = relations(letter, ({ one, many }) => ({
     fields: [letter.subjectOfficerId],
     references: [user.id],
   }),
-  relevantOfficer: one(officer, {
-    fields: [letter.relevantOfficerId],
-    references: [officer.id],
-  }),
+  relevantOfficers: many(letterRelevantOfficer),
   reassignments: many(letterReassignment),
   links: many(letterLink),
+}));
+
+export const letterRelevantOfficerRelations = relations(letterRelevantOfficer, ({ one }) => ({
+  letter: one(letter, {
+    fields: [letterRelevantOfficer.letterId],
+    references: [letter.id],
+  }),
+  officer: one(officer, {
+    fields: [letterRelevantOfficer.officerId],
+    references: [officer.id],
+  }),
 }));
 
 export const letterReassignmentRelations = relations(letterReassignment, ({ one }) => ({
   letter: one(letter, {
     fields: [letterReassignment.letterId],
     references: [letter.id],
+  }),
+  relevantOfficerAssignment: one(letterRelevantOfficer, {
+    fields: [letterReassignment.letterRelevantOfficerId],
+    references: [letterRelevantOfficer.id],
   }),
   fromOfficer: one(officer, {
     fields: [letterReassignment.fromOfficerId],
@@ -195,5 +238,9 @@ export const letterLinkRelations = relations(letterLink, ({ one }) => ({
   letter: one(letter, {
     fields: [letterLink.letterId],
     references: [letter.id],
+  }),
+  relevantOfficerAssignment: one(letterRelevantOfficer, {
+    fields: [letterLink.letterRelevantOfficerId],
+    references: [letterRelevantOfficer.id],
   }),
 }));

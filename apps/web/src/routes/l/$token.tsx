@@ -84,7 +84,8 @@ function LinkContent({ token, data }: { token: string; data: LinkData }) {
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt className="text-muted-foreground">Division</dt>
-            <dd className="font-medium">{DIVISION_NAMES[letter.division]}</dd>
+            {/* division is always set once a link exists to view — pending-review letters never get one. */}
+            <dd className="font-medium">{DIVISION_NAMES[letter.division!]}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">From Whom</dt>
@@ -96,7 +97,16 @@ function LinkContent({ token, data }: { token: string; data: LinkData }) {
           </div>
         </dl>
 
-        {role === "subjectOfficer" ? <SubjectOfficerActions token={token} status={letter.status} /> : <RelevantOfficerActions token={token} status={letter.status} division={letter.division} />}
+        {role === "subjectOfficer" ? (
+          <SubjectOfficerActions token={token} status={letter.status} />
+        ) : (
+          <RelevantOfficerActions
+            token={token}
+            division={letter.division!}
+            subjectForwarded={!!letter.subjectForwardedAt}
+            assignment={data.assignment!}
+          />
+        )}
       </CardContent>
     </Card>
   );
@@ -154,7 +164,17 @@ function SubjectOfficerActions({ token, status }: { token: string; status: strin
   return <ActionDone text="Nothing more to do here." />;
 }
 
-function RelevantOfficerActions({ token, status, division }: { token: string; status: string; division: string }) {
+function RelevantOfficerActions({
+  token,
+  division,
+  subjectForwarded,
+  assignment,
+}: {
+  token: string;
+  division: string;
+  subjectForwarded: boolean;
+  assignment: { receivedAt: string | Date | null; actionTakenAt: string | Date | null; actionNotes: string | null };
+}) {
   const queryClient = useQueryClient();
   const invalidate = () => queryClient.invalidateQueries({ queryKey: orpc.letterLinks.get.key({ input: { token } }) });
 
@@ -168,7 +188,14 @@ function RelevantOfficerActions({ token, status, division }: { token: string; st
     }),
   );
 
-  if (status === "sent_to_relevant") {
+  // Gated on the Subject Officer stage being done, not the letter's overall
+  // status — with several independent Relevant Officers, the shared status
+  // can already be ahead of any one of them.
+  if (!subjectForwarded) {
+    return <ActionDone text="Nothing to do yet." />;
+  }
+
+  if (!assignment.receivedAt) {
     return (
       <Button disabled={markReceived.isPending} onClick={() => markReceived.mutate({ token })}>
         {markReceived.isPending ? "Marking…" : "Mark Received"}
@@ -176,7 +203,7 @@ function RelevantOfficerActions({ token, status, division }: { token: string; st
     );
   }
 
-  if (status === "with_relevant_officer") {
+  if (!assignment.actionTakenAt) {
     return (
       <div className="flex flex-col gap-3">
         <RecordActionForm token={token} onDone={invalidate} />
@@ -185,11 +212,7 @@ function RelevantOfficerActions({ token, status, division }: { token: string; st
     );
   }
 
-  if (status === "action_taken") {
-    return <ActionDone text="Action already recorded for this letter." />;
-  }
-
-  return <ActionDone text="Nothing to do yet." />;
+  return <ActionDone text="Action already recorded for this letter." />;
 }
 
 function RecordActionForm({ token, onDone }: { token: string; onDone: () => void }) {

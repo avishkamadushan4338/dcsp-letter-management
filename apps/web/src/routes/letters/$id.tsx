@@ -10,14 +10,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@dcsp-letter-management/ui/components/dialog";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@dcsp-letter-management/ui/components/field";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@dcsp-letter-management/ui/components/select";
 import {
   Table,
   TableBody,
@@ -32,9 +24,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { AppShell } from "@/components/app-shell";
+import { RelevantOfficersField } from "@/components/letters/relevant-officers-field";
 import { LetterStatusBadge } from "@/components/letters/status-badge";
 import Loader from "@/components/loader";
-import { AppShell } from "@/components/app-shell";
 import { formatDateTime } from "@/lib/format";
 import { useUserRole } from "@/lib/role";
 import { orpc } from "@/utils/orpc";
@@ -70,9 +63,7 @@ function LetterDetail({ letter, role }: { letter: LetterDetail; role: string | n
     { label: "Created", at: letter.createdAt },
     ...(letter.reviewedAt ? [{ label: "Reviewed by DCS", at: letter.reviewedAt }] : []),
     { label: "Subject Officer received", at: letter.subjectReceivedAt },
-    { label: "Forwarded to Relevant Officer", at: letter.subjectForwardedAt },
-    { label: "Relevant Officer received", at: letter.relevantReceivedAt },
-    { label: "Action taken", at: letter.actionTakenAt, extra: letter.actionNotes ?? undefined },
+    { label: "Forwarded to Relevant Officer(s)", at: letter.subjectForwardedAt },
   ];
 
   return (
@@ -88,12 +79,11 @@ function LetterDetail({ letter, role }: { letter: LetterDetail; role: string | n
           </div>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-3 text-sm">
-          <InfoRow label="Division" value={DIVISION_NAMES[letter.division]} />
+          <InfoRow label="Division" value={letter.division ? DIVISION_NAMES[letter.division] : "Not yet assigned"} />
           <InfoRow label="From Whom" value={letter.fromWhom} />
           <InfoRow label="Received" value={formatDateTime(letter.receivedDate)} />
           <InfoRow label="Added By" value={letter.createdByRole === "dcs" ? "Admin (DCS)" : "Subject Officer"} />
           <InfoRow label="Subject Officer" value={letter.subjectOfficer?.name ?? "—"} />
-          <InfoRow label="Relevant Officer" value={letter.relevantOfficer?.name ?? "Not yet assigned"} />
         </CardContent>
       </Card>
 
@@ -101,6 +91,33 @@ function LetterDetail({ letter, role }: { letter: LetterDetail; role: string | n
 
       {role === "subjectOfficer" && (letter.status === "sent_to_subject" || letter.status === "with_subject_officer") && (
         <SubjectOfficerActionCard letter={letter} />
+      )}
+
+      {letter.relevantOfficers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Relevant Officers</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {letter.relevantOfficers.map((assignment) => (
+              <div key={assignment.id} className="rounded-md border p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium">
+                    {assignment.officer.name} <span className="font-normal text-muted-foreground">— {assignment.officer.position}</span>
+                  </p>
+                  <Badge variant={assignment.actionTakenAt ? "default" : assignment.receivedAt ? "secondary" : "outline"}>
+                    {assignment.actionTakenAt ? "Action taken" : assignment.receivedAt ? "Received" : "Awaiting receipt"}
+                  </Badge>
+                </div>
+                <div className="mt-2 flex flex-col gap-1 text-muted-foreground">
+                  <p>Received: {assignment.receivedAt ? formatDateTime(assignment.receivedAt) : "Pending"}</p>
+                  <p>Action taken: {assignment.actionTakenAt ? formatDateTime(assignment.actionTakenAt) : "Pending"}</p>
+                  {assignment.actionNotes && <p className="text-foreground">{assignment.actionNotes}</p>}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       <Card>
@@ -161,7 +178,9 @@ function LetterDetail({ letter, role }: { letter: LetterDetail; role: string | n
             <ul className="flex flex-col gap-2 text-sm">
               {letter.links.map((link) => (
                 <li key={link.id} className="flex items-center justify-between">
-                  <span>{link.role === "subjectOfficer" ? "Subject Officer" : "Relevant Officer"}</span>
+                  <span>
+                    {link.role === "subjectOfficer" ? "Subject Officer" : `Relevant Officer — ${link.relevantOfficerAssignment?.officer.name ?? "?"}`}
+                  </span>
                   <Badge variant={link.invalidatedAt ? "outline" : "secondary"}>{link.invalidatedAt ? "Spent" : "Active"}</Badge>
                 </li>
               ))}
@@ -214,7 +233,7 @@ function SubjectOfficerActionCard({ letter }: { letter: LetterDetail }) {
       <CardHeader>
         <CardTitle>Your action</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-3">
         {letter.status === "sent_to_subject" ? (
           <Button disabled={markReceived.isPending} onClick={() => markReceived.mutate({ id: letter.id })}>
             {markReceived.isPending ? "Marking…" : "Mark Received"}
@@ -232,10 +251,6 @@ function SubjectOfficerActionCard({ letter }: { letter: LetterDetail }) {
 function ReviewCard({ letter }: { letter: LetterDetail }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const officers = useQuery({
-    ...orpc.officers.listActive.queryOptions({ input: { division: letter.division } }),
-    enabled: open,
-  });
 
   const reviewMutation = useMutation(
     orpc.letters.review.mutationOptions({
@@ -251,10 +266,10 @@ function ReviewCard({ letter }: { letter: LetterDetail }) {
   );
 
   const form = useForm({
-    defaultValues: { relevantOfficerId: "" },
+    defaultValues: { relevantOfficerIds: [] as string[] },
     onSubmit: async ({ value }) => {
-      if (!value.relevantOfficerId) return;
-      await reviewMutation.mutateAsync({ id: letter.id, relevantOfficerId: value.relevantOfficerId });
+      if (value.relevantOfficerIds.length === 0) return;
+      await reviewMutation.mutateAsync({ id: letter.id, relevantOfficerIds: value.relevantOfficerIds });
     },
   });
 
@@ -265,13 +280,13 @@ function ReviewCard({ letter }: { letter: LetterDetail }) {
       </CardHeader>
       <CardContent>
         <p className="mb-3 text-sm text-muted-foreground">
-          The Subject Officer sent this without a Relevant Officer. Pick one to send it onward.
+          The Subject Officer sent this without a Relevant Officer. Pick one or more to send it onward.
         </p>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger render={<Button />}>Review</DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Assign a Relevant Officer</DialogTitle>
+              <DialogTitle>Assign Relevant Officer(s)</DialogTitle>
             </DialogHeader>
             <form
               onSubmit={(event) => {
@@ -279,32 +294,13 @@ function ReviewCard({ letter }: { letter: LetterDetail }) {
                 form.handleSubmit();
               }}
             >
-              <form.Field name="relevantOfficerId" validators={{ onChange: ({ value }) => (value ? undefined : { message: "Pick an officer" }) }}>
-                {(field) => {
-                  const noOfficers = officers.isSuccess && officers.data.length === 0;
-                  return (
-                    <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
-                      <FieldLabel>Relevant Officer</FieldLabel>
-                      <Select value={field.state.value} onValueChange={(v) => field.handleChange(v ?? "")} disabled={noOfficers}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder={noOfficers ? "No officers in this division" : "Choose an officer"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {officers.data?.map((officer) => (
-                            <SelectItem key={officer.id} value={officer.id}>
-                              {officer.name} — {officer.position}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {noOfficers ? (
-                        <FieldDescription>No active officers in this division — ask the Subject Officer to add one.</FieldDescription>
-                      ) : (
-                        <FieldError errors={field.state.meta.errors} />
-                      )}
-                    </Field>
-                  );
-                }}
+              <form.Field
+                name="relevantOfficerIds"
+                validators={{ onChange: ({ value }) => (value.length > 0 ? undefined : { message: "Pick at least one officer" }) }}
+              >
+                {(field) => (
+                  <RelevantOfficersField value={field.state.value} onChange={field.handleChange} errors={field.state.meta.errors} />
+                )}
               </form.Field>
               <DialogFooter className="mt-4">
                 <Button type="submit" disabled={reviewMutation.isPending}>

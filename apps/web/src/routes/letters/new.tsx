@@ -24,12 +24,13 @@ import {
 } from "@dcsp-letter-management/ui/components/tabs";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 import { DatePicker } from "@/components/date-field";
+import { RelevantOfficersField } from "@/components/letters/relevant-officers-field";
 import Loader from "@/components/loader";
 import { useUserRole } from "@/lib/role";
 import { orpc } from "@/utils/orpc";
@@ -81,65 +82,13 @@ function DivisionField({
   );
 }
 
-function ReferenceNumberPreview({ division }: { division: DivisionCode | "" }) {
-  const preview = useQuery({
-    ...orpc.letters.previewNextNumber.queryOptions({ input: { division: division as DivisionCode } }),
-    enabled: !!division,
-  });
-
-  if (!division) return null;
+function ReferenceNumberPreview() {
+  const preview = useQuery(orpc.letters.previewNextNumber.queryOptions());
 
   return (
     <FieldDescription>
       Reference number will be <span className="font-medium text-foreground">{preview.data?.referenceNumber ?? "…"}</span>
     </FieldDescription>
-  );
-}
-
-function RelevantOfficerField({
-  division,
-  value,
-  onChange,
-  errors,
-}: {
-  division: DivisionCode | "";
-  value: string;
-  onChange: (value: string) => void;
-  errors?: Array<{ message?: string } | undefined>;
-}) {
-  const officers = useQuery({
-    ...orpc.officers.listActive.queryOptions({ input: { division: division as DivisionCode } }),
-    enabled: !!division,
-  });
-  const noOfficers = !!division && officers.isSuccess && officers.data.length === 0;
-
-  return (
-    <Field data-invalid={errors && errors.length > 0 ? true : undefined}>
-      <FieldLabel>Relevant Officer</FieldLabel>
-      <Select value={value} onValueChange={(v) => onChange(v ?? "")} disabled={!division || noOfficers}>
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder={!division ? "Pick a division first" : noOfficers ? "No officers in this division" : "Choose an officer"} />
-        </SelectTrigger>
-        <SelectContent>
-          {officers.data?.map((officer) => (
-            <SelectItem key={officer.id} value={officer.id}>
-              {officer.name} — {officer.position}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {noOfficers ? (
-        <FieldDescription>
-          No active officers in this division yet — add one from the{" "}
-          <Link to="/officers" className="underline underline-offset-4">
-            Officers roster
-          </Link>
-          .
-        </FieldDescription>
-      ) : (
-        <FieldError errors={errors} />
-      )}
-    </Field>
   );
 }
 
@@ -161,15 +110,15 @@ function DcsForm() {
   );
 
   const form = useForm({
-    defaultValues: { division: "" as DivisionCode | "", subject: "", fromWhom: "", receivedDate: "", relevantOfficerId: "" },
+    defaultValues: { division: "" as DivisionCode | "", subject: "", fromWhom: "", receivedDate: "", relevantOfficerIds: [] as string[] },
     onSubmit: async ({ value }) => {
-      if (!value.division || !value.relevantOfficerId) return;
+      if (!value.division || value.relevantOfficerIds.length === 0) return;
       await createMutation.mutateAsync({
         division: value.division,
         subject: value.subject,
         fromWhom: value.fromWhom,
         receivedDate: new Date(value.receivedDate),
-        relevantOfficerId: value.relevantOfficerId,
+        relevantOfficerIds: value.relevantOfficerIds,
       });
     },
   });
@@ -212,12 +161,12 @@ function DcsForm() {
                   onDivisionChange={(value) => {
                     field.handleChange(value);
                     setDivision(value);
-                    form.setFieldValue("relevantOfficerId", "");
+                    form.setFieldValue("relevantOfficerIds", []);
                   }}
                 />
               )}
             </form.Field>
-            <ReferenceNumberPreview division={division} />
+            <ReferenceNumberPreview />
 
             <form.Field name="subject" validators={{ onChange: required("Subject is required") }}>
               {(field) => (
@@ -249,16 +198,15 @@ function DcsForm() {
               )}
             </form.Field>
 
-            <form.Field name="relevantOfficerId" validators={{ onChange: required("Pick a Relevant Officer") }}>
-              {(field) => (
-                <RelevantOfficerField
-                  division={division}
-                  value={field.state.value}
-                  onChange={field.handleChange}
-                  errors={field.state.meta.errors}
-                />
-              )}
-            </form.Field>
+            {division ? (
+              <form.Field name="relevantOfficerIds" validators={{ onChange: ({ value }) => (value.length > 0 ? undefined : { message: "Pick at least one Relevant Officer" }) }}>
+                {(field) => (
+                  <RelevantOfficersField division={division} value={field.state.value} onChange={field.handleChange} errors={field.state.meta.errors} />
+                )}
+              </form.Field>
+            ) : (
+              <FieldDescription>Pick a division to choose Relevant Officer(s).</FieldDescription>
+            )}
 
             <Button type="submit" disabled={createMutation.isPending}>
               {createMutation.isPending ? "Sending…" : "Create & Send"}
@@ -299,21 +247,19 @@ function SubjectOfficerForm() {
   );
 
   const form = useForm({
-    defaultValues: { division: "" as DivisionCode | "", subject: "", fromWhom: "", receivedDate: "", relevantOfficerId: "" },
+    defaultValues: { division: "" as DivisionCode | "", subject: "", fromWhom: "", receivedDate: "", relevantOfficerIds: [] as string[] },
     onSubmit: async ({ value }) => {
-      if (!value.division) return;
       if (option === "direct") {
-        if (!value.relevantOfficerId) return;
+        if (!value.division || value.relevantOfficerIds.length === 0) return;
         await directMutation.mutateAsync({
           division: value.division,
           subject: value.subject,
           fromWhom: value.fromWhom,
           receivedDate: new Date(value.receivedDate),
-          relevantOfficerId: value.relevantOfficerId,
+          relevantOfficerIds: value.relevantOfficerIds,
         });
       } else {
         await pendingMutation.mutateAsync({
-          division: value.division,
           subject: value.subject,
           fromWhom: value.fromWhom,
           receivedDate: new Date(value.receivedDate),
@@ -344,19 +290,21 @@ function SubjectOfficerForm() {
           }}
         >
           <FieldGroup>
-            <form.Field name="division">
-              {(field) => (
-                <DivisionField
-                  division={field.state.value}
-                  onDivisionChange={(value) => {
-                    field.handleChange(value);
-                    setDivision(value);
-                    form.setFieldValue("relevantOfficerId", "");
-                  }}
-                />
-              )}
-            </form.Field>
-            <ReferenceNumberPreview division={division} />
+            {option === "direct" && (
+              <form.Field name="division">
+                {(field) => (
+                  <DivisionField
+                    division={field.state.value}
+                    onDivisionChange={(value) => {
+                      field.handleChange(value);
+                      setDivision(value);
+                      form.setFieldValue("relevantOfficerIds", []);
+                    }}
+                  />
+                )}
+              </form.Field>
+            )}
+            <ReferenceNumberPreview />
 
             <form.Field name="subject" validators={{ onChange: required("Subject is required") }}>
               {(field) => (
@@ -388,18 +336,19 @@ function SubjectOfficerForm() {
               )}
             </form.Field>
 
-            {option === "direct" && (
-              <form.Field name="relevantOfficerId" validators={{ onChange: required("Pick a Relevant Officer") }}>
-                {(field) => (
-                  <RelevantOfficerField
-                    division={division}
-                    value={field.state.value}
-                    onChange={field.handleChange}
-                    errors={field.state.meta.errors}
-                  />
-                )}
-              </form.Field>
-            )}
+            {option === "direct" &&
+              (division ? (
+                <form.Field
+                  name="relevantOfficerIds"
+                  validators={{ onChange: ({ value }) => (value.length > 0 ? undefined : { message: "Pick at least one Relevant Officer" }) }}
+                >
+                  {(field) => (
+                    <RelevantOfficersField division={division} value={field.state.value} onChange={field.handleChange} errors={field.state.meta.errors} />
+                  )}
+                </form.Field>
+              ) : (
+                <FieldDescription>Pick a division to choose Relevant Officer(s).</FieldDescription>
+              ))}
 
             <Button type="submit" disabled={isPending}>
               {isPending ? "Sending…" : option === "direct" ? "Create & Send" : "Send to DCS for Review"}
