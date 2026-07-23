@@ -16,6 +16,15 @@ function LettersSummaryPage() {
   const query = useQuery(orpc.letters.printSummary.queryOptions());
   const items = query.data ?? [];
 
+  // One row per (letter, Relevant Officer) — each assigned officer needs
+  // their own signature line, so a letter assigned to 2 officers gets 2 rows
+  // under the same reference number, one per officer.
+  const rows = items.flatMap((item) =>
+    item.relevantOfficers.length > 0
+      ? item.relevantOfficers.map((assignment) => ({ key: assignment.id, item, officerName: assignment.officer.name }))
+      : [{ key: item.id, item, officerName: "—" }],
+  );
+
   return (
     <AppShell>
       {/* Scoped to this page's lifetime — landscape only applies while it's mounted. */}
@@ -23,14 +32,14 @@ function LettersSummaryPage() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
           <h1 className="text-lg font-semibold">Letters Summary</h1>
-          <Button onClick={() => window.print()} disabled={items.length === 0}>
+          <Button onClick={() => window.print()} disabled={rows.length === 0}>
             Print
           </Button>
         </div>
 
         {query.isPending ? (
           <Loader />
-        ) : items.length === 0 ? (
+        ) : rows.length === 0 ? (
           <Empty>
             <EmptyHeader>
               <EmptyTitle>No letters to summarize</EmptyTitle>
@@ -58,13 +67,13 @@ function LettersSummaryPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className="break-inside-avoid">
-                  <td className="border border-foreground p-2 break-words">{item.referenceNumber}</td>
-                  <td className="border border-foreground p-2 break-words">{item.fromWhom}</td>
-                  <td className="border border-foreground p-2 break-words">{item.subject}</td>
-                  <td className="border border-foreground p-2 whitespace-nowrap">{formatDate(item.receivedDate)}</td>
-                  <td className="border border-foreground p-2 break-words">{item.relevantOfficer?.name ?? "—"}</td>
+              {rows.map((row) => (
+                <tr key={row.key} className="break-inside-avoid">
+                  <td className="border border-foreground p-2 break-words">{row.item.referenceNumber}</td>
+                  <td className="border border-foreground p-2 break-words">{row.item.fromWhom}</td>
+                  <td className="border border-foreground p-2 break-words">{row.item.subject}</td>
+                  <td className="border border-foreground p-2 whitespace-nowrap">{formatDate(row.item.receivedDate)}</td>
+                  <td className="border border-foreground p-2 break-words">{row.officerName}</td>
                   <td className="h-16 border border-foreground p-2" />
                 </tr>
               ))}
