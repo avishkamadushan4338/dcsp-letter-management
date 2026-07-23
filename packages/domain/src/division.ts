@@ -21,10 +21,10 @@ export const DIVISION_NAMES: Record<DivisionCode, string> = Object.fromEntries(
 ) as Record<DivisionCode, string>;
 
 export const LETTER_NUMBER_MIN = 1;
-export const LETTER_NUMBER_MAX = 99999;
-export const LETTER_NUMBER_PAD = 5;
+export const LETTER_NUMBER_MAX = 999999;
+export const LETTER_NUMBER_PAD = 6;
 
-/** Builds `DCSP/<division-code>/<00001-99999>` (APP_FLOW.md §3.1). */
-export function formatReferenceNumber(division: DivisionCode, number: number): string {
-  return `DCSP/${division}/${String(number).padStart(LETTER_NUMBER_PAD, "0")}`;
+/** Builds `DCSP/<000001-999999>` — one counter shared across all divisions (APP_FLOW.md §3.1). */
+export function formatReferenceNumber(number: number): string {
+  return `DCSP/${String(number).padStart(LETTER_NUMBER_PAD, "0")}`;
 }

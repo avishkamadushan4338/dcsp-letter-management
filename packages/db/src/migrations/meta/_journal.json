@@ -8,6 +8,13 @@
       "when": 1784692152528,
       "tag": "0000_faulty_molly_hayes",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1784708400000,
+      "tag": "0001_global_letter_sequence",
+      "breakpoints": true
     }
   ]
 }
