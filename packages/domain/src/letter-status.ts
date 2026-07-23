@@ -27,14 +27,17 @@ export const LETTER_STATUS_LABELS: Record<LetterStatus, string> = {
   closed: "Closed",
 };
 
-/** Badge tone hint for the frontend — kept here so it's derived from the same source of truth. */
-export const LETTER_STATUS_TONE: Record<LetterStatus, "neutral" | "warning" | "success"> = {
-  pending_review: "warning",
-  created: "neutral",
-  sent_to_subject: "neutral",
-  with_subject_officer: "neutral",
-  sent_to_relevant: "neutral",
-  with_relevant_officer: "neutral",
-  action_taken: "success",
-  closed: "success",
+/** Badge color per status — one distinct color each, kept here so it's derived from the same source of truth. */
+export const LETTER_STATUS_COLORS = ["gray", "amber", "blue", "indigo", "violet", "cyan", "emerald", "teal"] as const;
+export type LetterStatusColor = (typeof LETTER_STATUS_COLORS)[number];
+
+export const LETTER_STATUS_COLOR: Record<LetterStatus, LetterStatusColor> = {
+  pending_review: "amber",
+  created: "gray",
+  sent_to_subject: "blue",
+  with_subject_officer: "indigo",
+  sent_to_relevant: "violet",
+  with_relevant_officer: "cyan",
+  action_taken: "emerald",
+  closed: "teal",
 };
