@@ -12,6 +12,18 @@ import { previewNextLetterNumber, reserveNextLetterNumber } from "../lib/letter-
 
 const SINGLETON_ID = "singleton";
 
+/** How far back "Print Numbers" looks — wide enough that a slip missed on its issue day can still be printed the next day. */
+const PRINT_NUMBERS_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+const LETTER_SORT_COLUMNS = {
+  createdAt: letter.createdAt,
+  receivedDate: letter.receivedDate,
+  referenceNumber: letter.referenceNumber,
+  subject: letter.subject,
+  status: letter.status,
+} as const;
+const letterSortBySchema = z.enum(Object.keys(LETTER_SORT_COLUMNS) as [keyof typeof LETTER_SORT_COLUMNS]);
+
 /**
  * Confirms every requested officer is active, no id is repeated, and — when
  * `division` is given — all belong to it. When `division` is omitted (DCS
@@ -99,7 +111,10 @@ export const lettersRouter = {
       z.object({
         search: z.string().trim().optional(),
         division: divisionCodeSchema.optional(),
-        status: letterStatusSchema.optional(),
+        // "in_progress" is a meta-status meaning "not yet actioned" (the Dashboard's "In Progress" tile) — not a real `letter.status` value.
+        status: z.union([letterStatusSchema, z.literal("in_progress")]).optional(),
+        sortBy: letterSortBySchema.default("createdAt"),
+        sortDir: z.enum(["asc", "desc"]).default("desc"),
         page: z.number().int().min(1).default(1),
         pageSize: z.number().int().min(1).max(100).default(20),
       }),
@@ -109,7 +124,11 @@ export const lettersRouter = {
       const conditions = [
         role === "dcs" ? undefined : eq(letter.subjectOfficerId, context.session.user.id),
         input.division ? eq(letter.division, input.division) : undefined,
-        input.status ? eq(letter.status, input.status) : undefined,
+        input.status === "in_progress"
+          ? ne(letter.status, "action_taken")
+          : input.status
+            ? eq(letter.status, input.status)
+            : undefined,
         input.search
           ? or(
               like(letter.referenceNumber, `%${input.search}%`),
@@ -119,12 +138,14 @@ export const lettersRouter = {
           : undefined,
       ].filter((condition) => condition !== undefined);
       const where = conditions.length > 0 ? and(...conditions) : undefined;
+      const sortColumn = LETTER_SORT_COLUMNS[input.sortBy];
+      const orderBy = input.sortDir === "asc" ? asc(sortColumn) : desc(sortColumn);
 
       const [items, totalRows] = await Promise.all([
         context.db.query.letter.findMany({
           where,
           with: { relevantOfficers: { with: { officer: true } }, subjectOfficer: true },
-          orderBy: [desc(letter.createdAt)],
+          orderBy: [orderBy],
           limit: input.pageSize,
           offset: (input.page - 1) * input.pageSize,
         }),

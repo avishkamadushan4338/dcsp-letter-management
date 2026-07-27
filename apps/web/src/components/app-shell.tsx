@@ -14,6 +14,7 @@ interface NavLink {
 }
 
 const DCS_LINKS: NavLink[] = [
+  { to: "/dashboard", label: "Dashboard" },
   { to: "/letters", label: "Letters" },
   { to: "/letters/new", label: "New Letter" },
   { to: "/print-numbers", label: "Print Numbers" },
@@ -21,6 +22,7 @@ const DCS_LINKS: NavLink[] = [
 ];
 
 const SUBJECT_OFFICER_LINKS: NavLink[] = [
+  { to: "/dashboard", label: "Dashboard" },
   { to: "/letters", label: "Letters" },
   { to: "/letters/new", label: "New Letter" },
   { to: "/print-numbers", label: "Print Numbers" },

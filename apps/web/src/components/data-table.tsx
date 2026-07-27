@@ -12,14 +12,16 @@ import {
   TableHeader,
   TableRow,
 } from "@dcsp-letter-management/ui/components/table";
+import { cn } from "@dcsp-letter-management/ui/lib/utils";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   onRowClick?: (row: TData) => void;
+  rowClassName?: (row: TData) => string | undefined;
 }
 
-export function DataTable<TData, TValue>({ columns, data, onRowClick }: DataTableProps<TData, TValue>) {
+export function DataTable<TData, TValue>({ columns, data, onRowClick, rowClassName }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
     columns,
@@ -44,7 +46,7 @@ export function DataTable<TData, TValue>({ columns, data, onRowClick }: DataTabl
           <TableRow
             key={row.id}
             onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-            className={onRowClick ? "cursor-pointer" : undefined}
+            className={cn(onRowClick && "cursor-pointer", rowClassName?.(row.original))}
           >
             {row.getVisibleCells().map((cell) => (
               <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
