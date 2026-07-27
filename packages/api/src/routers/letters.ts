@@ -447,16 +447,19 @@ export const lettersRouter = {
   }),
 
   /**
-   * "Print Numbers" utility (APP_FLOW.md §6): every number issued today.
-   * Scoped to letters the caller's own role created — DCS and the Subject Officer each
+   * "Print Numbers" utility (APP_FLOW.md §6): every number issued in the last
+   * 48 hours — not just the current calendar day, so a slip missed on the
+   * day it was issued can still be caught and printed. Since that window
+   * will often re-include numbers already printed yesterday, the UI lets the
+   * caller pick which of these to actually put on paper this time. Scoped to
+   * letters the caller's own role created — DCS and the Subject Officer each
    * print only their own numbers, so the same slip never gets printed twice.
    */
-  printNumbersToday: staffProcedure.handler(async ({ context }) => {
-    const now = new Date();
-    const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  printNumbers: staffProcedure.handler(async ({ context }) => {
+    const cutoff = new Date(Date.now() - PRINT_NUMBERS_WINDOW_MS);
 
     return context.db.query.letter.findMany({
-      where: and(gte(letter.createdAt, startOfDay), eq(letter.createdByRole, context.role)),
+      where: and(gte(letter.createdAt, cutoff), eq(letter.createdByRole, context.role)),
       with: { relevantOfficers: { with: { officer: true } } },
       orderBy: [asc(letter.division), asc(letter.number)],
     });

@@ -88,7 +88,7 @@ DCS's dashboard is pure oversight over every letter, not a separate workflow:
 - **View details** — every letter can be opened to see its full timeline: when it was received by each officer, when it was forwarded, when action was taken, the action notes themselves, and the complete reassignment history if it was ever handed off.
 - **Review** button — only shown for letters awaiting review (Flow 2, Option B); lets DCS assign the Relevant Officer and push it forward.
 - **Set Subject Officer** — DCS can change who "the" Subject Officer is at any time. This only affects letters created *after* the change — letters already sent keep going to whoever was the Subject Officer when they were created.
-- **Print Numbers** — a utility page listing every letter number issued *today*, grouped for printing onto a physical log sheet (16 rows per page), showing letter number, division, and Relevant Officer.
+- **Print Numbers** — a utility page listing every letter number issued in the *last 48 hours* (wide enough to catch a slip missed on its issue day), grouped for printing onto a physical log sheet (16 rows per page), showing letter number, division, and Relevant Officer. The caller checks off which of these numbers to actually print, since the window will often re-include ones already printed the day before. Available to DCS and the Subject Officer alike, each seeing only the numbers their own role issued.
 
 ## 7. Where "Relevant Officers" come from (the officer roster)
 
