@@ -177,7 +177,12 @@ function RelevantOfficerActions({
   token: string;
   division: string;
   subjectForwarded: boolean;
-  assignment: { receivedAt: string | Date | null; actionTakenAt: string | Date | null; actionNotes: string | null };
+  assignment: {
+    receivedAt: string | Date | null;
+    actionTakenAt: string | Date | null;
+    actionNotes: string | null;
+    canReassign: boolean;
+  };
 }) {
   const queryClient = useQueryClient();
   const invalidate = () => queryClient.invalidateQueries({ queryKey: orpc.letterLinks.get.key({ input: { token } }) });
@@ -211,7 +216,7 @@ function RelevantOfficerActions({
     return (
       <div className="flex flex-col gap-3">
         <RecordActionForm token={token} onDone={invalidate} />
-        <ReassignDialog token={token} division={division} onDone={invalidate} />
+        {assignment.canReassign && <ReassignDialog token={token} division={division} onDone={invalidate} />}
       </div>
     );
   }

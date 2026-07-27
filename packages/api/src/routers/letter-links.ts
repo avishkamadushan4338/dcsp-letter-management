@@ -1,4 +1,5 @@
 import { letter, letterLink, letterReassignment, letterRelevantOfficer, officer } from "@dcsp-letter-management/db/schema/letters";
+import { canReassignLetters } from "@dcsp-letter-management/domain/officer-position";
 import { ORPCError } from "@orpc/server";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
@@ -12,7 +13,7 @@ const letterLinkWith = {
   letter: {
     with: { relevantOfficers: { with: { officer: true } }, subjectOfficer: true },
   },
-  relevantOfficerAssignment: true,
+  relevantOfficerAssignment: { with: { officer: true } },
 } as const;
 
 async function resolveActiveLink(db: Parameters<typeof issueLetterLink>[0], token: string, role: "subjectOfficer" | "relevantOfficer") {
@@ -59,6 +60,7 @@ export const letterLinksRouter = {
             receivedAt: link.relevantOfficerAssignment.receivedAt,
             actionTakenAt: link.relevantOfficerAssignment.actionTakenAt,
             actionNotes: link.relevantOfficerAssignment.actionNotes,
+            canReassign: canReassignLetters(link.relevantOfficerAssignment.officer.position),
           }
         : null,
     };
@@ -149,6 +151,9 @@ export const letterLinksRouter = {
       const assignment = requireAssignment(link);
       if (!assignment.receivedAt || assignment.actionTakenAt) {
         throw new ORPCError("CONFLICT", { message: "This letter can't be reassigned right now." });
+      }
+      if (!canReassignLetters(assignment.officer.position)) {
+        throw new ORPCError("FORBIDDEN", { message: "Your position isn't permitted to reassign letters to another officer." });
       }
 
       const currentOfficerId = assignment.officerId;
