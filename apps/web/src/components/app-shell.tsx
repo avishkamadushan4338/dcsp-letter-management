@@ -44,8 +44,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex h-full flex-col print:h-auto">
       <header className="border-b print:hidden">
         <div className="flex items-center justify-between gap-4 px-4 py-3">
-          <Link to="/letters" className="font-semibold">
-            DCSP Letter Management
+          <Link
+            to="/letters"
+            className="min-w-0 truncate font-semibold"
+            title="Southern Province Planning Secretariat - Letter Management System"
+          >
+            Southern Province Planning Secretariat - Letter Management System
           </Link>
           <UserButton align="end" />
         </div>

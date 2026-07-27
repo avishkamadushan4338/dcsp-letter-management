@@ -23,11 +23,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
     meta: [
       {
-        title: "dcsp-letter-management",
+        title: "Southern Province Planning Secretariat - Letter Management System",
       },
       {
         name: "description",
-        content: "dcsp-letter-management is a web application",
+        content: "Letter Management System for the Southern Province Planning Secretariat.",
       },
     ],
     links: [

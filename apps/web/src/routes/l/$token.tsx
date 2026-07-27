@@ -43,7 +43,7 @@ function LetterLinkPage() {
   return (
     <div className="mx-auto flex min-h-svh max-w-lg flex-col justify-center gap-4 p-4">
       <div className="text-center">
-        <h1 className="font-semibold">DCSP Letter Management</h1>
+        <h1 className="font-semibold">Southern Province Planning Secretariat - Letter Management System</h1>
       </div>
 
       {query.isPending ? (
