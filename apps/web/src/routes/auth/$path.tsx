@@ -1,14 +1,42 @@
 import { viewPaths } from "@better-auth-ui/core";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LandmarkIcon } from "lucide-react";
+import type { CSSProperties } from "react";
 
 import { Auth } from "@/components/auth/auth";
-import { ModeToggle } from "@/components/mode-toggle";
 
 const validAuthPathSegments = new Set(Object.values(viewPaths.auth));
 
 const APP_NAME = "Southern Province Planning Secretariat";
 const APP_TAGLINE = "Letter Management System";
+
+/**
+ * The sign-in page is the one screen every visitor sees before they've
+ * chosen a theme (or before they're even a user) — it always renders in the
+ * brand's light palette, regardless of a saved dark-mode preference. Redeclaring
+ * the semantic tokens here (from the same constant brand colors, not the
+ * `.dark` overrides in globals.css) beats whatever `.dark` class is on
+ * `<html>`, since a nearer custom-property declaration always wins.
+ */
+const FORCE_LIGHT_THEME_STYLE = {
+  "--background": "var(--color-cream)",
+  "--foreground": "var(--color-maroon)",
+  "--card": "#ffffff",
+  "--card-foreground": "var(--color-maroon)",
+  "--popover": "#ffffff",
+  "--popover-foreground": "var(--color-maroon)",
+  "--primary": "var(--color-maroon)",
+  "--primary-foreground": "var(--color-cream)",
+  "--secondary": "var(--color-cream-dark)",
+  "--secondary-foreground": "var(--color-maroon)",
+  "--muted": "var(--color-cream-dark)",
+  "--muted-foreground": "var(--color-maroon-mid)",
+  "--accent": "var(--color-gold)",
+  "--accent-foreground": "var(--color-maroon)",
+  "--border": "var(--color-warm-neutral)",
+  "--input": "var(--color-warm-neutral)",
+  "--ring": "var(--color-gold)",
+} as CSSProperties;
 
 type AuthSearch = {
   redirectTo?: string;
@@ -30,7 +58,7 @@ function AuthPage() {
   const { path } = Route.useParams();
 
   return (
-    <div className="grid h-full grid-cols-1 md:grid-cols-5">
+    <div className="grid h-full grid-cols-1 md:grid-cols-5" style={FORCE_LIGHT_THEME_STYLE}>
       {/* Branding panel — the primary visual on md+, hidden on phones so the form gets full width there. */}
       <div className="relative col-span-2 hidden flex-col justify-between overflow-hidden bg-primary p-10 text-primary-foreground md:flex">
         <div
@@ -62,18 +90,13 @@ function AuthPage() {
 
       {/* Auth form panel */}
       <div className="col-span-1 flex min-w-0 flex-col gap-6 overflow-y-auto p-4 md:col-span-3 md:p-8">
-        <div className="flex items-center justify-between">
-          <div className="flex min-w-0 items-center gap-2 md:hidden">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <LandmarkIcon className="size-4" />
-            </div>
-            <div className="min-w-0 leading-tight">
-              <p className="truncate text-xs font-semibold text-muted-foreground">{APP_NAME}</p>
-              <p className="truncate font-heading text-sm font-semibold">{APP_TAGLINE}</p>
-            </div>
+        <div className="flex min-w-0 items-center gap-2 md:hidden">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <LandmarkIcon className="size-4" />
           </div>
-          <div className="ms-auto shrink-0">
-            <ModeToggle />
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-xs font-semibold text-muted-foreground">{APP_NAME}</p>
+            <p className="truncate font-heading text-sm font-semibold">{APP_TAGLINE}</p>
           </div>
         </div>
 
