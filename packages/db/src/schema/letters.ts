@@ -32,20 +32,6 @@ export const officer = sqliteTable(
 );
 
 /**
- * Singleton row holding whichever user is currently "the" Subject Officer
- * (APP_FLOW.md §6). Only affects letters created after it changes — each
- * letter snapshots its own `subjectOfficerId` at creation time.
- */
-export const appConfig = sqliteTable("app_config", {
-  id: text("id").primaryKey().default("singleton"),
-  currentSubjectOfficerId: text("current_subject_officer_id").references(() => user.id),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .$onUpdate(() => /* @__PURE__ */ new Date())
-    .notNull(),
-});
-
-/**
  * Single global running counter backing the `DCSP/<000001-999999>`
  * reference number (APP_FLOW.md §3.1) — shared across every division, not
  * per-division. Incremented atomically the moment a letter is created, and
@@ -178,13 +164,6 @@ export const letterLink = sqliteTable(
   },
   (table) => [index("letter_link_letter_idx").on(table.letterId)],
 );
-
-export const appConfigRelations = relations(appConfig, ({ one }) => ({
-  currentSubjectOfficer: one(user, {
-    fields: [appConfig.currentSubjectOfficerId],
-    references: [user.id],
-  }),
-}));
 
 export const officerRelations = relations(officer, ({ many }) => ({
   relevantAssignments: many(letterRelevantOfficer),

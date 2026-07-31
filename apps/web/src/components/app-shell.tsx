@@ -18,7 +18,7 @@ const DCS_LINKS: NavLink[] = [
   { to: "/letters", label: "Letters" },
   { to: "/letters/new", label: "New Letter" },
   { to: "/print-numbers", label: "Print Numbers" },
-  { to: "/subject-officer", label: "Subject Officer" },
+  { to: "/subject-officer", label: "Subject Officers" },
 ];
 
 const SUBJECT_OFFICER_LINKS: NavLink[] = [

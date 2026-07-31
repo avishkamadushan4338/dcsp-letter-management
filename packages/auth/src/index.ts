@@ -1,6 +1,6 @@
 import { createDb } from "@dcsp-letter-management/db";
 import * as schema from "@dcsp-letter-management/db/schema/auth";
-import type { UserRole } from "@dcsp-letter-management/domain/roles";
+import { MIN_PASSWORD_LENGTH, type UserRole } from "@dcsp-letter-management/domain/roles";
 import { env } from "@dcsp-letter-management/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -31,7 +31,7 @@ export function createAuth() {
       enabled: true,
       // Kept low enough for the `admin` seed password (see `ensureSeedUsers`) —
       // real accounts are provisioned by DCS, not through public self-sign-up.
-      minPasswordLength: SEED_PASSWORD.length,
+      minPasswordLength: MIN_PASSWORD_LENGTH,
     },
     user: {
       additionalFields: {

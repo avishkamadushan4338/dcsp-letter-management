@@ -5,7 +5,7 @@ import { dashboardRouter } from "./dashboard";
 import { letterLinksRouter } from "./letter-links";
 import { lettersRouter } from "./letters";
 import { officersRouter } from "./officers";
-import { settingsRouter } from "./settings";
+import { subjectOfficersRouter } from "./subject-officers";
 
 export const appRouter = {
   healthCheck: publicProcedure.handler(() => {
@@ -18,7 +18,7 @@ export const appRouter = {
     };
   }),
   officers: officersRouter,
-  settings: settingsRouter,
+  subjectOfficers: subjectOfficersRouter,
   letters: lettersRouter,
   letterLinks: letterLinksRouter,
   dashboard: dashboardRouter,

@@ -18,3 +18,11 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
   dcs: "Admin",
   subjectOfficer: "Subject Officer",
 };
+
+/**
+ * The floor better-auth itself enforces for every account's password
+ * (`packages/auth`) — shared here so DCS's "create Subject Officer" form
+ * (a client bundle that can't import the server-only `auth` package) can
+ * validate against the same value instead of a guessed one.
+ */
+export const MIN_PASSWORD_LENGTH = 10;

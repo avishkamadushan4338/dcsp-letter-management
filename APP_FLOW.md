@@ -8,7 +8,7 @@ The app is the **Letter Management System** for the Southern Province Planning S
 ## 1. The people involved
 
 1. **DCS staff** — logs in with a username/password. Registers incoming letters, assigns officers, and has full oversight of every letter in the system. **Note on naming:** internally and in the API this role is called `dcs`, but the UI itself labels this person **"Admin"** wherever it addresses the reader directly (e.g. "Send to Admin for Review," "Awaiting Admin's review," a DCS-created letter shows "Added By: Admin (DCS)"). DCS staff and "Admin" are the same role.
-2. **Subject Officer** — a single designated person at any given time (DCS decides who this is). Acts as the middle-man between DCS and the Relevant Officer. Can also log in to their own dashboard to originate letters directly.
+2. **Subject Officer** — acts as the middle-man between DCS and the Relevant Officer. There can be several Subject Officer accounts at once; DCS creates each account (there's no public sign-up) and picks which one a given letter goes to when registering it. Each Subject Officer can also log in to their own dashboard, scoped to only the letters routed to them, to originate letters directly.
 3. **Relevant Officer** — the person who actually does the work described in the letter and records what action was taken. There can be many Relevant Officers (one per letter, chosen per-division). In the Subject Officer's roster screen these are labeled generically as "Members"/"Officers" and their job title is captured as **"Position."**
 
 **Key idea:** the Subject Officer and Relevant Officer never need to "log in" to act on a letter. Each one gets a unique link emailed to them for that specific letter, and opening that link lets them act on just that one letter — nothing else. Only DCS and the Subject Officer's own dashboard use a real login.
@@ -33,7 +33,7 @@ A letter always has exactly one of these statuses, and it only ever moves forwar
 1. DCS opens "New Letter," picks a **division**. There are exactly three divisions in the system: `01` Development Division, `02` Administration Division, `03` Account Division. As soon as a division is picked, a reference number is generated for it in the form **`DCSP/<division-code>/<00001–99999>`** (e.g. `DCSP/01/00042`) — this number is reserved immediately, before the form is even submitted. Numbers count up per division and wrap back to `00001` after `99999`.
 2. DCS fills in subject, the sender (labeled **"From Whom"** in the UI), received date.
 3. DCS picks a **Relevant Officer** from that division's list.
-4. The **Subject Officer is not chosen here** — it's always whoever DCS has currently designated as "the" Subject Officer (a single global setting). If no Subject Officer has been set yet, DCS cannot submit the letter — they're told to configure one first.
+4. DCS picks which **Subject Officer** the letter goes to, from the list of Subject Officer accounts. If none exist yet, DCS cannot submit the letter — they're told to create one first.
 5. On submit:
    - The letter is created.
    - An email with a unique link goes out to **both** the Subject Officer and the Relevant Officer.
@@ -87,7 +87,7 @@ DCS's dashboard is pure oversight over every letter, not a separate workflow:
 - **Pending Review count** — a running count of officer-originated letters waiting for DCS to assign a Relevant Officer.
 - **View details** — every letter can be opened to see its full timeline: when it was received by each officer, when it was forwarded, when action was taken, the action notes themselves, and the complete reassignment history if it was ever handed off.
 - **Review** button — only shown for letters awaiting review (Flow 2, Option B); lets DCS assign the Relevant Officer and push it forward.
-- **Set Subject Officer** — DCS can change who "the" Subject Officer is at any time. This only affects letters created *after* the change — letters already sent keep going to whoever was the Subject Officer when they were created.
+- **Subject Officers** — DCS creates new Subject Officer accounts (name, email, initial password) from the "Subject Officers" page; there's no public sign-up. Each letter picks its Subject Officer at creation time (§3), so adding a new account never affects letters already sent.
 - **Print Numbers** — a utility page listing every letter number issued in the *last 48 hours* (wide enough to catch a slip missed on its issue day), grouped for printing onto a physical log sheet (16 rows per page), showing letter number, division, and Relevant Officer. The caller checks off which of these numbers to actually print, since the window will often re-include ones already printed the day before. Available to DCS and the Subject Officer alike, each seeing only the numbers their own role issued.
 
 ## 7. Where "Relevant Officers" come from (the officer roster)
@@ -96,7 +96,7 @@ Every dropdown that lets DCS or the Subject Officer pick a "Relevant Officer" is
 
 - **Add an officer** — the Subject Officer fills in name, email, position/designation, and division. The officer immediately becomes selectable in every "Relevant Officer" dropdown for that division (DCS's New Letter form, the Subject Officer's own New Letter form, and the Relevant Officer's own "reassign to" list).
 - **Remove an officer** — the Subject Officer can remove an officer from the roster (with a confirmation prompt). This doesn't delete their history — any letters already assigned to them keep showing their name — it just makes them unselectable for *new* assignments going forward.
-- DCS has no page for adding/removing officers directly; DCS only ever *selects* from the roster the Subject Officer maintains, and separately sets who the Subject Officer themselves is (§6).
+- DCS has no page for adding/removing officers directly; DCS only ever *selects* from the roster the Subject Officer maintains, and separately creates Subject Officer accounts themselves (§6).
 
 ## 8. Summary of the full happy-path lifecycle
 

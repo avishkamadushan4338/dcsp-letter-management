@@ -29,6 +29,13 @@
       "when": 1784786991094,
       "tag": "0003_square_hellfire_club",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1785469708786,
+      "tag": "0004_young_wasp",
+      "breakpoints": true
     }
   ]
 }

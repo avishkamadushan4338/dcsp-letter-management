@@ -95,7 +95,7 @@ function ReferenceNumberPreview() {
 function DcsForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const subjectOfficer = useQuery(orpc.settings.getCurrentSubjectOfficer.queryOptions());
+  const subjectOfficers = useQuery(orpc.subjectOfficers.list.queryOptions());
   const [division, setDivision] = useState<DivisionCode | "">("");
 
   const createMutation = useMutation(
@@ -110,30 +110,38 @@ function DcsForm() {
   );
 
   const form = useForm({
-    defaultValues: { division: "" as DivisionCode | "", subject: "", fromWhom: "", receivedDate: "", relevantOfficerIds: [] as string[] },
+    defaultValues: {
+      division: "" as DivisionCode | "",
+      subject: "",
+      fromWhom: "",
+      receivedDate: "",
+      subjectOfficerId: "",
+      relevantOfficerIds: [] as string[],
+    },
     onSubmit: async ({ value }) => {
-      if (!value.division || value.relevantOfficerIds.length === 0) return;
+      if (!value.division || !value.subjectOfficerId || value.relevantOfficerIds.length === 0) return;
       await createMutation.mutateAsync({
         division: value.division,
         subject: value.subject,
         fromWhom: value.fromWhom,
         receivedDate: new Date(value.receivedDate),
+        subjectOfficerId: value.subjectOfficerId,
         relevantOfficerIds: value.relevantOfficerIds,
       });
     },
   });
 
-  if (subjectOfficer.isPending) return <Loader />;
+  if (subjectOfficers.isPending) return <Loader />;
 
-  if (!subjectOfficer.data) {
+  if (!subjectOfficers.data || subjectOfficers.data.length === 0) {
     return (
       <Empty>
         <EmptyHeader>
-          <EmptyTitle>No Subject Officer set</EmptyTitle>
+          <EmptyTitle>No Subject Officers yet</EmptyTitle>
           <EmptyDescription>
-            Set a Subject Officer before creating letters. <br />
+            Create a Subject Officer account before creating letters. <br />
             <Button className="mt-3" onClick={() => navigate({ to: "/subject-officer" })}>
-              Set Subject Officer
+              Create Subject Officer
             </Button>
           </EmptyDescription>
         </EmptyHeader>
@@ -167,6 +175,27 @@ function DcsForm() {
               )}
             </form.Field>
             <ReferenceNumberPreview />
+
+            <form.Field name="subjectOfficerId" validators={{ onChange: required("Pick a Subject Officer") }}>
+              {(field) => (
+                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
+                  <FieldLabel>Subject Officer</FieldLabel>
+                  <Select value={field.state.value} onValueChange={(value) => field.handleChange(value ?? "")}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose a Subject Officer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjectOfficers.data.map((subjectOfficer) => (
+                        <SelectItem key={subjectOfficer.id} value={subjectOfficer.id}>
+                          {subjectOfficer.name} ({subjectOfficer.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError errors={field.state.meta.errors} />
+                </Field>
+              )}
+            </form.Field>
 
             <form.Field name="subject" validators={{ onChange: required("Subject is required") }}>
               {(field) => (

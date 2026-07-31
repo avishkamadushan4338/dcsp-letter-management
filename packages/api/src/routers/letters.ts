@@ -1,4 +1,4 @@
-import { appConfig, letter, letterLink, letterReassignment, letterRelevantOfficer, officer } from "@dcsp-letter-management/db/schema/letters";
+import { letter, letterLink, letterReassignment, letterRelevantOfficer, officer } from "@dcsp-letter-management/db/schema/letters";
 import { divisionCodeSchema, type DivisionCode } from "@dcsp-letter-management/domain/division";
 import { letterStatusSchema } from "@dcsp-letter-management/domain/letter-status";
 import { ORPCError } from "@orpc/server";
@@ -9,8 +9,6 @@ import { dcsProcedure, staffProcedure, subjectOfficerProcedure } from "../index"
 import { newId } from "../lib/ids";
 import { issueLetterLink } from "../lib/letter-links";
 import { previewNextLetterNumber, reserveNextLetterNumber } from "../lib/letter-number";
-
-const SINGLETON_ID = "singleton";
 
 /** How far back "Print Numbers" looks — wide enough that a slip missed on its issue day can still be printed the next day. */
 const PRINT_NUMBERS_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -87,6 +85,17 @@ async function assignRelevantOfficers(
       letterRelevantOfficerId: assignment.id,
     });
   }
+}
+
+/** Confirms the chosen id is a real, still-existing Subject Officer account (APP_FLOW.md §1). */
+async function requireSubjectOfficer(db: Parameters<typeof issueLetterLink>[0], subjectOfficerId: string) {
+  const found = await db.query.user.findFirst({
+    where: (userTable, { and: andCol, eq: eqCol }) => andCol(eqCol(userTable.id, subjectOfficerId), eqCol(userTable.role, "subjectOfficer")),
+  });
+  if (!found) {
+    throw new ORPCError("BAD_REQUEST", { message: "Pick a valid Subject Officer." });
+  }
+  return found;
 }
 
 /** Loads a letter and confirms the calling Subject Officer actually owns it (mirrors the `get` check). */
@@ -197,21 +206,15 @@ export const lettersRouter = {
         subject: z.string().min(1),
         fromWhom: z.string().min(1),
         receivedDate: z.coerce.date(),
+        subjectOfficerId: z.string(),
         relevantOfficerIds: z.array(z.string()).min(1),
       }),
     )
     .handler(async ({ context, input }) => {
-      const config = await context.db.query.appConfig.findFirst({ where: eq(appConfig.id, SINGLETON_ID) });
-      if (!config?.currentSubjectOfficerId) {
-        throw new ORPCError("BAD_REQUEST", { message: "Set a Subject Officer before creating letters." });
-      }
-      const { officers: relevantOfficers } = await requireActiveOfficers(context.db, input.relevantOfficerIds, input.division);
-      const subjectOfficer = await context.db.query.user.findFirst({
-        where: (userTable, { eq: eqCol }) => eqCol(userTable.id, config.currentSubjectOfficerId as string),
-      });
-      if (!subjectOfficer) {
-        throw new ORPCError("BAD_REQUEST", { message: "The current Subject Officer account no longer exists." });
-      }
+      const [subjectOfficer, { officers: relevantOfficers }] = await Promise.all([
+        requireSubjectOfficer(context.db, input.subjectOfficerId),
+        requireActiveOfficers(context.db, input.relevantOfficerIds, input.division),
+      ]);
 
       const { number, referenceNumber } = await reserveNextLetterNumber(context.db);
 
