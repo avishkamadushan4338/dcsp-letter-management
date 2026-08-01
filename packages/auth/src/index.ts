@@ -53,14 +53,21 @@ export function createAuth() {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {
+      // `*.workers.dev` sits one level below a Public Suffix List wildcard
+      // entry (like `*.github.io`) — every label under it (e.g. this app's
+      // `avishkamadushan4338.workers.dev`) is its own separate registrable
+      // domain to a real browser. A cookie's `Domain` can never legally be
+      // set to a public suffix itself, so `crossSubDomainCookies` scoped to
+      // `avishkamadushan4338.workers.dev` gets silently rejected by every
+      // browser (curl doesn't enforce this, which is why it looked fine in
+      // manual testing) — the session cookie never actually gets stored.
+      // A plain host-only cookie for the server's own origin is both
+      // correct and sufficient here, since only the server origin ever
+      // needs to read it.
       defaultCookieAttributes: {
         sameSite: isLocalDev ? "lax" : "none",
         secure: !isLocalDev,
         httpOnly: true,
-      },
-      crossSubDomainCookies: {
-        enabled: !isLocalDev,
-        domain: "avishkamadushan4338.workers.dev",
       },
     },
   });
