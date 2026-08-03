@@ -30,10 +30,26 @@ const SUBJECT_OFFICER_LINKS: NavLink[] = [
   { to: "/officers", label: "Officers" },
 ];
 
+// Independent from SUBJECT_OFFICER_LINKS on purpose — Administrative Officer
+// is its own profile, not a filtered view of Subject Officer's, so its nav
+// isn't derived from the other array.
+const ADMINISTRATIVE_OFFICER_LINKS: NavLink[] = [
+  { to: "/dashboard", label: "Dashboard" },
+  { to: "/letters", label: "Letters" },
+  { to: "/letters/new", label: "New Letter" },
+];
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { role } = useUserRole();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const links = role === "dcs" ? DCS_LINKS : role === "subjectOfficer" ? SUBJECT_OFFICER_LINKS : [];
+  const links =
+    role === "dcs"
+      ? DCS_LINKS
+      : role === "subjectOfficer"
+        ? SUBJECT_OFFICER_LINKS
+        : role === "administrativeOfficer"
+          ? ADMINISTRATIVE_OFFICER_LINKS
+          : [];
 
   const pendingReview = useQuery({
     ...orpc.letters.pendingReviewCount.queryOptions(),

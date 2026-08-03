@@ -1,14 +1,14 @@
 import { z } from "zod";
 
 /**
- * Only DCS and the Subject Officer log in with a real account (APP_FLOW.md
- * §1). Relevant Officers never get a `user` row — they act only through
- * emailed per-letter links (see `letter-link.ts`).
+ * DCS, the Subject Officer, and the Administrative Officer log in with a real
+ * account (APP_FLOW.md §1). Relevant Officers never get a `user` row — they
+ * act only through emailed per-letter links (see `letter-link.ts`).
  *
  * DCS is labelled "Admin" throughout the UI, but the role value stays `dcs`
  * everywhere internally and in the API (APP_FLOW.md §1).
  */
-export const USER_ROLES = ["dcs", "subjectOfficer"] as const;
+export const USER_ROLES = ["dcs", "subjectOfficer", "administrativeOfficer"] as const;
 
 export type UserRole = (typeof USER_ROLES)[number];
 
@@ -17,7 +17,24 @@ export const userRoleSchema = z.enum(USER_ROLES);
 export const USER_ROLE_LABELS: Record<UserRole, string> = {
   dcs: "Admin",
   subjectOfficer: "Subject Officer",
+  administrativeOfficer: "Administrative Officer",
 };
+
+/**
+ * Subject Officer and Administrative Officer are two independent login
+ * profiles that both act as "the letter-routing officer" between DCS and the
+ * Relevant Officer (APP_FLOW.md §1, §4-§5) — they share every workflow
+ * capability. The only thing that distinguishes them is Relevant Officer
+ * roster management (APP_FLOW.md §7), which stays exclusive to Subject
+ * Officer (see `rosterProcedure` in `packages/api`).
+ */
+export const OFFICER_ROLES = ["subjectOfficer", "administrativeOfficer"] as const;
+
+export type OfficerRole = (typeof OFFICER_ROLES)[number];
+
+export function isOfficerRole(role: UserRole | null | undefined): role is OfficerRole {
+  return role === "subjectOfficer" || role === "administrativeOfficer";
+}
 
 /**
  * The floor better-auth itself enforces for every account's password

@@ -1,4 +1,5 @@
 import { DIVISION_NAMES } from "@dcsp-letter-management/domain/division";
+import { isOfficerRole, type UserRole, USER_ROLE_LABELS } from "@dcsp-letter-management/domain/roles";
 import { Badge } from "@dcsp-letter-management/ui/components/badge";
 import { Button } from "@dcsp-letter-management/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@dcsp-letter-management/ui/components/card";
@@ -59,7 +60,7 @@ function LetterDetailPage() {
 
 type LetterDetail = Awaited<ReturnType<typeof orpc.letters.get.call>>;
 
-function LetterDetail({ letter, role }: { letter: LetterDetail; role: string | null }) {
+function LetterDetail({ letter, role }: { letter: LetterDetail; role: UserRole | null }) {
   const timeline: { label: string; at: Date | string | null; extra?: string }[] = [
     { label: "Created", at: letter.createdAt },
     ...(letter.reviewedAt ? [{ label: "Reviewed by DCS", at: letter.reviewedAt }] : []),
@@ -83,14 +84,20 @@ function LetterDetail({ letter, role }: { letter: LetterDetail; role: string | n
           <InfoRow label="Division" value={letter.division ? DIVISION_NAMES[letter.division] : "Not yet assigned"} />
           <InfoRow label="From Whom" value={letter.fromWhom} />
           <InfoRow label="Received" value={formatDateTime(letter.receivedDate)} />
-          <InfoRow label="Added By" value={letter.createdByRole === "dcs" ? "Admin (DCS)" : "Subject Officer"} />
-          <InfoRow label="Subject Officer" value={letter.subjectOfficer?.name ?? "—"} />
+          <InfoRow
+            label="Added By"
+            value={letter.createdByRole === "dcs" ? "Admin (DCS)" : USER_ROLE_LABELS[letter.createdByRole]}
+          />
+          <InfoRow
+            label={letter.subjectOfficer?.role ? USER_ROLE_LABELS[letter.subjectOfficer.role] : "Subject Officer"}
+            value={letter.subjectOfficer?.name ?? "—"}
+          />
         </CardContent>
       </Card>
 
       {role === "dcs" && letter.status === "pending_review" && <ReviewCard letter={letter} />}
 
-      {role === "subjectOfficer" && (letter.status === "sent_to_subject" || letter.status === "with_subject_officer") && (
+      {isOfficerRole(role) && (letter.status === "sent_to_subject" || letter.status === "with_subject_officer") && (
         <SubjectOfficerActionCard letter={letter} />
       )}
 

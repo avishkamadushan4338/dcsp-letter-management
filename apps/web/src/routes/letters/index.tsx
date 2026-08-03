@@ -5,6 +5,7 @@ import {
   letterStatusSchema,
   type LetterStatus,
 } from "@dcsp-letter-management/domain/letter-status";
+import { isOfficerRole, type UserRole } from "@dcsp-letter-management/domain/roles";
 import { Button } from "@dcsp-letter-management/ui/components/button";
 import {
   Dialog,
@@ -70,7 +71,7 @@ type LetterListItem = {
   subject: string;
   fromWhom: string;
   status: LetterStatus;
-  createdByRole: "dcs" | "subjectOfficer";
+  createdByRole: UserRole;
   receivedDate: string | Date;
   relevantOfficers: { officer: { name: string } }[];
   subjectOfficer: { name: string } | null;
@@ -215,7 +216,7 @@ function LettersPage() {
         // Subject Officer sees a one-click action here instead of the status
         // badge for the two statuses that are actually waiting on them —
         // no need to open the letter just to mark it received or forward it.
-        if (role === "subjectOfficer" && item.status === "sent_to_subject") {
+        if (isOfficerRole(role) && item.status === "sent_to_subject") {
           const isThisPending = markReceived.isPending && markReceived.variables?.id === item.id;
           return (
             <Button
@@ -230,7 +231,7 @@ function LettersPage() {
             </Button>
           );
         }
-        if (role === "subjectOfficer" && item.status === "with_subject_officer") {
+        if (isOfficerRole(role) && item.status === "with_subject_officer") {
           const isThisPending = forward.isPending && forward.variables?.id === item.id;
           return (
             <Button

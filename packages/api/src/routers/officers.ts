@@ -5,7 +5,7 @@ import { ORPCError } from "@orpc/server";
 import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { publicProcedure, staffProcedure, subjectOfficerProcedure } from "../index";
+import { publicProcedure, rosterProcedure, staffProcedure } from "../index";
 import { newId } from "../lib/ids";
 
 export const officersRouter = {
@@ -40,7 +40,7 @@ export const officersRouter = {
     return officers;
   }),
 
-  create: subjectOfficerProcedure
+  create: rosterProcedure
     .input(
       z.object({
         name: z.string().min(1),
@@ -57,7 +57,7 @@ export const officersRouter = {
       return created;
     }),
 
-  remove: subjectOfficerProcedure.input(z.object({ id: z.string() })).handler(async ({ context, input }) => {
+  remove: rosterProcedure.input(z.object({ id: z.string() })).handler(async ({ context, input }) => {
     const [updated] = await context.db
       .update(officer)
       .set({ active: false })

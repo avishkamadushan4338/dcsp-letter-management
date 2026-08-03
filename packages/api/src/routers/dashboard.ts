@@ -3,7 +3,7 @@ import { letter, letterRelevantOfficer } from "@dcsp-letter-management/db/schema
 import { LETTER_STATUSES } from "@dcsp-letter-management/domain/letter-status";
 import { and, asc, count, eq, gte, isNotNull, isNull, lte, ne } from "drizzle-orm";
 
-import { dcsProcedure, subjectOfficerProcedure } from "../index";
+import { dcsProcedure, officerProcedure } from "../index";
 
 type Db = ReturnType<typeof createDb>;
 
@@ -116,7 +116,7 @@ export const dashboardRouter = {
    *  - `overdueRelevantOfficer` — of the letters they forwarded, how many
    *    Relevant Officer pickups are still outstanding 48h+ later.
    */
-  subjectOfficerOverview: subjectOfficerProcedure.handler(async ({ context }) => {
+  subjectOfficerOverview: officerProcedure.handler(async ({ context }) => {
     const userId = context.session.user.id;
     const now = new Date();
     const startOfToday = startOfUtcDay(now);
@@ -157,7 +157,7 @@ export const dashboardRouter = {
   }),
 
   /** Subject-Officer-scoped equivalent of `overdueRelevantOfficers` — only letters they forwarded. */
-  subjectOfficerOverdueRelevantOfficers: subjectOfficerProcedure.handler(async ({ context }) => {
+  subjectOfficerOverdueRelevantOfficers: officerProcedure.handler(async ({ context }) => {
     const overdueAssignments = await findOverdueAssignments(context.db, context.session.user.id);
     return overdueAssignments.map((assignment) => ({
       id: assignment.id,

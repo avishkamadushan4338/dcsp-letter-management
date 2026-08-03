@@ -1,11 +1,12 @@
 import { letter, letterLink, letterReassignment, letterRelevantOfficer, officer } from "@dcsp-letter-management/db/schema/letters";
 import { divisionCodeSchema, type DivisionCode } from "@dcsp-letter-management/domain/division";
 import { letterStatusSchema } from "@dcsp-letter-management/domain/letter-status";
+import { isOfficerRole, OFFICER_ROLES } from "@dcsp-letter-management/domain/roles";
 import { ORPCError } from "@orpc/server";
 import { and, asc, count, desc, eq, gte, inArray, isNull, like, ne, or } from "drizzle-orm";
 import { z } from "zod";
 
-import { dcsProcedure, staffProcedure, subjectOfficerProcedure } from "../index";
+import { dcsProcedure, officerProcedure, staffProcedure } from "../index";
 import { newId } from "../lib/ids";
 import { issueLetterLink } from "../lib/letter-links";
 import { previewNextLetterNumber, reserveNextLetterNumber } from "../lib/letter-number";
@@ -87,10 +88,15 @@ async function assignRelevantOfficers(
   }
 }
 
-/** Confirms the chosen id is a real, still-existing Subject Officer account (APP_FLOW.md §1). */
-async function requireSubjectOfficer(db: Parameters<typeof issueLetterLink>[0], subjectOfficerId: string) {
+/**
+ * Confirms the chosen id is a real, still-existing officer account — either
+ * profile, since Subject Officer and Administrative Officer are independent
+ * but interchangeable as a letter's routing officer (APP_FLOW.md §1).
+ */
+async function requireOfficerAccount(db: Parameters<typeof issueLetterLink>[0], subjectOfficerId: string) {
   const found = await db.query.user.findFirst({
-    where: (userTable, { and: andCol, eq: eqCol }) => andCol(eqCol(userTable.id, subjectOfficerId), eqCol(userTable.role, "subjectOfficer")),
+    where: (userTable, { and: andCol, inArray: inArrayCol, eq: eqCol }) =>
+      andCol(eqCol(userTable.id, subjectOfficerId), inArrayCol(userTable.role, OFFICER_ROLES)),
   });
   if (!found) {
     throw new ORPCError("BAD_REQUEST", { message: "Pick a valid Subject Officer." });
@@ -192,7 +198,7 @@ export const lettersRouter = {
     if (!found) {
       throw new ORPCError("NOT_FOUND");
     }
-    if (context.role === "subjectOfficer" && found.subjectOfficerId !== context.session.user.id) {
+    if (isOfficerRole(context.role) && found.subjectOfficerId !== context.session.user.id) {
       throw new ORPCError("FORBIDDEN");
     }
     return found;
@@ -212,7 +218,7 @@ export const lettersRouter = {
     )
     .handler(async ({ context, input }) => {
       const [subjectOfficer, { officers: relevantOfficers }] = await Promise.all([
-        requireSubjectOfficer(context.db, input.subjectOfficerId),
+        requireOfficerAccount(context.db, input.subjectOfficerId),
         requireActiveOfficers(context.db, input.relevantOfficerIds, input.division),
       ]);
 
@@ -263,7 +269,7 @@ export const lettersRouter = {
     }),
 
   /** Flow 2, Option A (APP_FLOW.md §4): Subject Officer sends directly. */
-  createBySubjectOfficerDirect: subjectOfficerProcedure
+  createBySubjectOfficerDirect: officerProcedure
     .input(
       z.object({
         division: divisionCodeSchema,
@@ -289,7 +295,7 @@ export const lettersRouter = {
           fromWhom: input.fromWhom,
           receivedDate: input.receivedDate,
           status: "sent_to_relevant",
-          createdByRole: "subjectOfficer",
+          createdByRole: context.role,
           subjectOfficerId: context.session.user.id,
           subjectReceivedAt: now,
           subjectForwardedAt: now,
@@ -317,7 +323,7 @@ export const lettersRouter = {
    * there's nothing to scope a division to yet. DCS derives it from whichever
    * Relevant Officer they assign on review.
    */
-  createBySubjectOfficerPending: subjectOfficerProcedure
+  createBySubjectOfficerPending: officerProcedure
     .input(
       z.object({
         subject: z.string().min(1),
@@ -338,7 +344,7 @@ export const lettersRouter = {
           fromWhom: input.fromWhom,
           receivedDate: input.receivedDate,
           status: "pending_review",
-          createdByRole: "subjectOfficer",
+          createdByRole: context.role,
           subjectOfficerId: context.session.user.id,
         })
         .returning();
@@ -413,7 +419,7 @@ export const lettersRouter = {
    * Received" action (APP_FLOW.md §5) — lets a logged-in Subject Officer act
    * on their letters without needing the emailed link.
    */
-  subjectMarkReceived: subjectOfficerProcedure.input(z.object({ id: z.string() })).handler(async ({ context, input }) => {
+  subjectMarkReceived: officerProcedure.input(z.object({ id: z.string() })).handler(async ({ context, input }) => {
     const found = await requireOwnSubjectLetter(context.db, input.id, context.session.user.id);
     if (found.status !== "sent_to_subject") {
       throw new ORPCError("CONFLICT", { message: "This letter isn't waiting to be received." });
@@ -428,7 +434,7 @@ export const lettersRouter = {
   }),
 
   /** Dashboard equivalent of the emailed link's "Send to Relevant Officer" action (APP_FLOW.md §5). */
-  subjectForward: subjectOfficerProcedure.input(z.object({ id: z.string() })).handler(async ({ context, input }) => {
+  subjectForward: officerProcedure.input(z.object({ id: z.string() })).handler(async ({ context, input }) => {
     const found = await requireOwnSubjectLetter(context.db, input.id, context.session.user.id);
     if (found.status !== "with_subject_officer") {
       throw new ORPCError("CONFLICT", { message: "Mark it received before forwarding it." });
@@ -474,7 +480,7 @@ export const lettersRouter = {
    * sent "via DCS" only shows up here once DCS actually reviews it and assigns a
    * Relevant Officer; letters sent directly (by DCS or "Send Directly") appear right away.
    */
-  printSummary: subjectOfficerProcedure.handler(async ({ context }) => {
+  printSummary: officerProcedure.handler(async ({ context }) => {
     return context.db.query.letter.findMany({
       where: and(eq(letter.subjectOfficerId, context.session.user.id), ne(letter.status, "pending_review")),
       with: { relevantOfficers: { with: { officer: true } } },

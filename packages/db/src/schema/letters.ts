@@ -57,9 +57,10 @@ export const letter = sqliteTable(
     receivedDate: integer("received_date", { mode: "timestamp_ms" }).notNull(),
     status: text("status", { enum: LETTER_STATUSES }).notNull(),
 
-    // Who originated the letter — DCS (Flow 1) or the Subject Officer
-    // themselves (Flow 2) — shown in the UI as "Added By" (APP_FLOW.md §1).
-    createdByRole: text("created_by_role", { enum: ["dcs", "subjectOfficer"] }).notNull(),
+    // Who originated the letter — DCS (Flow 1) or the officer themselves,
+    // Subject Officer or Administrative Officer (Flow 2) — shown in the UI
+    // as "Added By" (APP_FLOW.md §1).
+    createdByRole: text("created_by_role", { enum: ["dcs", "subjectOfficer", "administrativeOfficer"] }).notNull(),
 
     // Snapshotted at creation time so a later change to "the" Subject Officer
     // (APP_FLOW.md §6) never affects letters already sent.

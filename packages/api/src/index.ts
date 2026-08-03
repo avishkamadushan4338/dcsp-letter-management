@@ -1,4 +1,4 @@
-import type { UserRole } from "@dcsp-letter-management/domain/roles";
+import { OFFICER_ROLES, type UserRole } from "@dcsp-letter-management/domain/roles";
 import { ORPCError, os } from "@orpc/server";
 
 import type { Context } from "./context";
@@ -33,8 +33,18 @@ function requireRole(...roles: UserRole[]) {
 /** DCS only ("Admin" in the UI — APP_FLOW.md §1). */
 export const dcsProcedure = requireRole("dcs");
 
-/** The Subject Officer's own dashboard (APP_FLOW.md §4, §7). */
-export const subjectOfficerProcedure = requireRole("subjectOfficer");
+/**
+ * Either officer login (Subject Officer or Administrative Officer) — the
+ * shared letter-routing workflow both independent profiles perform
+ * identically (APP_FLOW.md §4-§5).
+ */
+export const officerProcedure = requireRole(...OFFICER_ROLES);
 
-/** Either logged-in staff role — used by read endpoints both dashboards share. */
-export const staffProcedure = requireRole("dcs", "subjectOfficer");
+/**
+ * Subject Officer only — Relevant Officer roster management (APP_FLOW.md
+ * §7) is the one capability Administrative Officer does not get.
+ */
+export const rosterProcedure = requireRole("subjectOfficer");
+
+/** Any logged-in role — used by read endpoints every dashboard shares. */
+export const staffProcedure = requireRole("dcs", ...OFFICER_ROLES);

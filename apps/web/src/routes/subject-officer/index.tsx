@@ -1,4 +1,5 @@
-import { MIN_PASSWORD_LENGTH } from "@dcsp-letter-management/domain/roles";
+import { MIN_PASSWORD_LENGTH, OFFICER_ROLES, type OfficerRole, USER_ROLE_LABELS } from "@dcsp-letter-management/domain/roles";
+import { Badge } from "@dcsp-letter-management/ui/components/badge";
 import { Button } from "@dcsp-letter-management/ui/components/button";
 import {
   Dialog,
@@ -11,6 +12,13 @@ import {
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@dcsp-letter-management/ui/components/empty";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@dcsp-letter-management/ui/components/field";
 import { Input } from "@dcsp-letter-management/ui/components/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@dcsp-letter-management/ui/components/select";
 import {
   Table,
   TableBody,
@@ -67,6 +75,7 @@ function SubjectOfficersPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Profile</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -74,6 +83,9 @@ function SubjectOfficersPage() {
                 <TableRow key={subjectOfficer.id}>
                   <TableCell>{subjectOfficer.name}</TableCell>
                   <TableCell>{subjectOfficer.email}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{subjectOfficer.role ? USER_ROLE_LABELS[subjectOfficer.role] : "Subject Officer"}</Badge>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -101,7 +113,7 @@ function AddSubjectOfficerDialog() {
   );
 
   const form = useForm({
-    defaultValues: { name: "", email: "", password: "" },
+    defaultValues: { name: "", email: "", password: "", role: "subjectOfficer" as OfficerRole },
     onSubmit: async ({ value }) => {
       await createMutation.mutateAsync(value);
     },
@@ -112,7 +124,7 @@ function AddSubjectOfficerDialog() {
       <DialogTrigger render={<Button />}>Add Subject Officer</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create a Subject Officer account</DialogTitle>
+          <DialogTitle>Create an officer account</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(event) => {
@@ -121,6 +133,26 @@ function AddSubjectOfficerDialog() {
           }}
         >
           <FieldGroup>
+            <form.Field name="role">
+              {(field) => (
+                <Field>
+                  <FieldLabel>Profile</FieldLabel>
+                  <Select value={field.state.value} onValueChange={(value) => field.handleChange(value as OfficerRole)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {OFFICER_ROLES.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {USER_ROLE_LABELS[role]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+            </form.Field>
+
             <form.Field name="name" validators={{ onChange: required("Name is required") }}>
               {(field) => (
                 <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>

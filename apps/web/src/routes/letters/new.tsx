@@ -1,4 +1,5 @@
 import { DIVISION_CODES, DIVISION_NAMES, type DivisionCode } from "@dcsp-letter-management/domain/division";
+import { isOfficerRole, USER_ROLE_LABELS } from "@dcsp-letter-management/domain/roles";
 import { Button } from "@dcsp-letter-management/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@dcsp-letter-management/ui/components/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@dcsp-letter-management/ui/components/empty";
@@ -50,7 +51,7 @@ function NewLetterPage() {
     <AppShell>
       <div className="mx-auto max-w-lg">
         <h1 className="mb-4 text-lg font-semibold">New Letter</h1>
-        {isPending ? <Loader /> : role === "dcs" ? <DcsForm /> : role === "subjectOfficer" ? <SubjectOfficerForm /> : null}
+        {isPending ? <Loader /> : role === "dcs" ? <DcsForm /> : isOfficerRole(role) ? <SubjectOfficerForm /> : null}
       </div>
     </AppShell>
   );
@@ -188,6 +189,7 @@ function DcsForm() {
                       {subjectOfficers.data.map((subjectOfficer) => (
                         <SelectItem key={subjectOfficer.id} value={subjectOfficer.id}>
                           {subjectOfficer.name} ({subjectOfficer.email})
+                          {subjectOfficer.role ? ` — ${USER_ROLE_LABELS[subjectOfficer.role]}` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
