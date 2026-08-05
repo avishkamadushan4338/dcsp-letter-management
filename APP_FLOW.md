@@ -61,7 +61,7 @@ They don't know who should handle it, or want DCS to decide.
 
 ## 4a. Flow 3 — Administrative Officer creates the letter
 
-The Administrative Officer logs into their own dashboard and can originate a letter too, but — unlike Subject Officer's Flow 2 — it can never skip past the Subject Officer stage. Every letter it creates must name a target **Subject Officer** (or another Administrative Officer account) up front, and always lands at status `sent_to_subject`, exactly like a DCS-created letter. It still chooses the same routing option Flow 2 offers:
+The Administrative Officer logs into their own dashboard and can originate a letter too, but — unlike Subject Officer's Flow 2 — it can never skip past the Subject Officer stage. Every letter it creates must name a target **Subject Officer** (a real Subject Officer account — Administrative Officer accounts never appear in this picker, even DCS's own) up front, and always lands at status `sent_to_subject`, exactly like a DCS-created letter. It still chooses the same routing option Flow 2 offers:
 
 ### Option A — "Send Directly"
 They already know which Relevant Officer should get it — this option is identical in shape to DCS's own "New Letter" form (Flow 1): division, target Subject Officer, subject, sender, received date, and Relevant Officer(s) are all picked up front.

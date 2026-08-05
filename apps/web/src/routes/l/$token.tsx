@@ -353,7 +353,7 @@ function ReassignDialog({ token, division, onDone }: { token: string; division: 
                   </SelectTrigger>
                   <SelectContent>
                     {officers.data?.map((officer) => (
-                      <SelectItem key={officer.id} value={officer.id}>
+                      <SelectItem key={officer.id} value={officer.id} label={`${officer.name} — ${officer.position}`}>
                         {officer.name} — {officer.position}
                       </SelectItem>
                     ))}

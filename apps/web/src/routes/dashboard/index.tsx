@@ -103,6 +103,11 @@ function DcsDashboard() {
     }),
   );
   const overdue = useQuery(orpc.dashboard.overdueRelevantOfficers.queryOptions());
+  const recentlyCompleted = useQuery(
+    orpc.letters.list.queryOptions({
+      input: { status: "action_taken", sortBy: "updatedAt", sortDir: "desc", pageSize: 8 },
+    }),
+  );
 
   const stats = overview.data;
 
@@ -224,6 +229,33 @@ function DcsDashboard() {
                 columns={overdueColumns}
                 data={overdue.data ?? []}
                 onRowClick={(row) => navigate({ to: "/letters/$id", params: { id: row.letter.id } })}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle>Recently Completed</CardTitle>
+            <Link to="/letters" search={{ status: "action_taken" }} className="text-sm text-primary hover:underline">
+              View all
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {recentlyCompleted.isPending ? (
+              <Loader />
+            ) : (recentlyCompleted.data?.items.length ?? 0) === 0 ? (
+              <Empty className="p-6">
+                <EmptyHeader>
+                  <EmptyTitle>Nothing completed yet</EmptyTitle>
+                  <EmptyDescription>Letters where every Relevant Officer has recorded an action will appear here.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <DataTable
+                columns={letterQueueColumnsWithDivision}
+                data={recentlyCompleted.data?.items ?? []}
+                onRowClick={(row) => navigate({ to: "/letters/$id", params: { id: row.id } })}
               />
             )}
           </CardContent>

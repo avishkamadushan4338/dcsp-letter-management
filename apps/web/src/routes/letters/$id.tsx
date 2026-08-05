@@ -66,6 +66,10 @@ function LetterDetail({ letter, role }: { letter: LetterDetail; role: UserRole |
     ...(letter.reviewedAt ? [{ label: "Reviewed by DCS", at: letter.reviewedAt }] : []),
     { label: "Subject Officer received", at: letter.subjectReceivedAt },
     { label: "Forwarded to Relevant Officer(s)", at: letter.subjectForwardedAt },
+    ...letter.relevantOfficers.map((assignment) => ({
+      label: `${assignment.officer.name} received`,
+      at: assignment.receivedAt,
+    })),
   ];
 
   return (

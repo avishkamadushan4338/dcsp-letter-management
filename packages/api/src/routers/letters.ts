@@ -1,7 +1,7 @@
 import { letter, letterLink, letterReassignment, letterRelevantOfficer, officer } from "@dcsp-letter-management/db/schema/letters";
 import { divisionCodeSchema, type DivisionCode } from "@dcsp-letter-management/domain/division";
 import { letterStatusSchema } from "@dcsp-letter-management/domain/letter-status";
-import { isOfficerRole, OFFICER_ROLES } from "@dcsp-letter-management/domain/roles";
+import { isOfficerRole } from "@dcsp-letter-management/domain/roles";
 import { ORPCError } from "@orpc/server";
 import { and, asc, count, desc, eq, gte, inArray, isNull, like, ne, or } from "drizzle-orm";
 import { z } from "zod";
@@ -16,6 +16,7 @@ const PRINT_NUMBERS_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 const LETTER_SORT_COLUMNS = {
   createdAt: letter.createdAt,
+  updatedAt: letter.updatedAt,
   receivedDate: letter.receivedDate,
   referenceNumber: letter.referenceNumber,
   subject: letter.subject,
@@ -89,14 +90,13 @@ async function assignRelevantOfficers(
 }
 
 /**
- * Confirms the chosen id is a real, still-existing officer account — either
- * profile, since Subject Officer and Administrative Officer are independent
- * but interchangeable as a letter's routing officer (APP_FLOW.md §1).
+ * Confirms the chosen id is a real, still-existing Subject Officer account —
+ * a letter's target officer must be Subject Officer specifically, not
+ * Administrative Officer (APP_FLOW.md §1).
  */
 async function requireOfficerAccount(db: Parameters<typeof issueLetterLink>[0], subjectOfficerId: string) {
   const found = await db.query.user.findFirst({
-    where: (userTable, { and: andCol, inArray: inArrayCol, eq: eqCol }) =>
-      andCol(eqCol(userTable.id, subjectOfficerId), inArrayCol(userTable.role, OFFICER_ROLES)),
+    where: (userTable, { and: andCol, eq: eqCol }) => andCol(eqCol(userTable.id, subjectOfficerId), eqCol(userTable.role, "subjectOfficer")),
   });
   if (!found) {
     throw new ORPCError("BAD_REQUEST", { message: "Pick a valid Subject Officer." });
@@ -118,10 +118,10 @@ async function requireOwnSubjectLetter(db: Parameters<typeof issueLetterLink>[0]
 
 /**
  * Shared by `createByDcs` and `createByAdministrativeOfficerDirect`
- * (APP_FLOW.md §3, §4a) — both pick a division, target Subject/Administrative
- * Officer, and Relevant Officer(s) up front, landing the letter at
- * `sent_to_subject` with both officer links emailed immediately. Only
- * `createdByRole` differs between the two callers.
+ * (APP_FLOW.md §3, §4a) — both pick a division, target Subject Officer, and
+ * Relevant Officer(s) up front, landing the letter at `sent_to_subject` with
+ * both officer links emailed immediately. Only `createdByRole` differs
+ * between the two callers.
  */
 async function createSentToSubjectLetter(
   db: Parameters<typeof issueLetterLink>[0],

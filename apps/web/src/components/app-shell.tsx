@@ -35,7 +35,6 @@ const SUBJECT_OFFICER_LINKS: NavLink[] = [
 // isn't derived from the other array.
 const ADMINISTRATIVE_OFFICER_LINKS: NavLink[] = [
   { to: "/dashboard", label: "Dashboard" },
-  { to: "/letters", label: "Letters" },
   { to: "/letters/new", label: "New Letter" },
 ];
 

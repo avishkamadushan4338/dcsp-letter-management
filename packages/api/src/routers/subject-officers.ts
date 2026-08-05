@@ -10,8 +10,11 @@ import { dcsOrAdministrativeOfficerProcedure, dcsProcedure } from "../index";
 export const subjectOfficersRouter = {
   /**
    * Every officer account (Subject Officer or Administrative Officer) — for
-   * DCS's "New Letter" picker and Administrative Officer's "New Letter"
-   * picker (APP_FLOW.md §4a), since both must choose who a letter routes to.
+   * DCS's "Subject Officers" management page. DCS's and Administrative
+   * Officer's "New Letter" pickers also call this, but filter the result
+   * down to Subject Officer accounts only client-side, since a letter's
+   * target officer must be a Subject Officer specifically (APP_FLOW.md §3,
+   * §4a).
    */
   list: dcsOrAdministrativeOfficerProcedure.handler(async ({ context }) => {
     return context.db.query.user.findMany({
