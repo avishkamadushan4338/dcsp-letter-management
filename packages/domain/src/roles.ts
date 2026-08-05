@@ -23,10 +23,15 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
 /**
  * Subject Officer and Administrative Officer are two independent login
  * profiles that both act as "the letter-routing officer" between DCS and the
- * Relevant Officer (APP_FLOW.md §1, §4-§5) — they share every workflow
- * capability. The only thing that distinguishes them is Relevant Officer
- * roster management (APP_FLOW.md §7), which stays exclusive to Subject
- * Officer (see `rosterProcedure` in `packages/api`).
+ * Relevant Officer (APP_FLOW.md §1, §4-§5) — they share the capabilities for
+ * *acting on* a letter already routed to them. Two things distinguish them:
+ * Relevant Officer roster management (APP_FLOW.md §7), exclusive to Subject
+ * Officer (see `rosterProcedure` in `packages/api`); and letter origination
+ * (APP_FLOW.md §4, §4a) — Subject Officer can self-originate and skip
+ * straight to the Relevant Officer or DCS's review queue, while an
+ * Administrative-Officer-originated letter always lands with a Subject
+ * Officer first (see `subjectOfficerProcedure` / `administrativeOfficerProcedure`
+ * in `packages/api`).
  */
 export const OFFICER_ROLES = ["subjectOfficer", "administrativeOfficer"] as const;
 

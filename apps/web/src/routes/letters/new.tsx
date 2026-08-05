@@ -1,5 +1,5 @@
 import { DIVISION_CODES, DIVISION_NAMES, type DivisionCode } from "@dcsp-letter-management/domain/division";
-import { isOfficerRole, USER_ROLE_LABELS } from "@dcsp-letter-management/domain/roles";
+import { USER_ROLE_LABELS } from "@dcsp-letter-management/domain/roles";
 import { Button } from "@dcsp-letter-management/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@dcsp-letter-management/ui/components/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@dcsp-letter-management/ui/components/empty";
@@ -51,7 +51,15 @@ function NewLetterPage() {
     <AppShell>
       <div className="mx-auto max-w-lg">
         <h1 className="mb-4 text-lg font-semibold">New Letter</h1>
-        {isPending ? <Loader /> : role === "dcs" ? <DcsForm /> : isOfficerRole(role) ? <SubjectOfficerForm /> : null}
+        {isPending ? (
+          <Loader />
+        ) : role === "dcs" ? (
+          <DcsForm />
+        ) : role === "administrativeOfficer" ? (
+          <AdministrativeOfficerForm />
+        ) : role === "subjectOfficer" ? (
+          <SubjectOfficerForm />
+        ) : null}
       </div>
     </AppShell>
   );
@@ -241,6 +249,194 @@ function DcsForm() {
 
             <Button type="submit" disabled={createMutation.isPending}>
               {createMutation.isPending ? "Sending…" : "Create & Send"}
+            </Button>
+          </FieldGroup>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AdministrativeOfficerForm() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const subjectOfficers = useQuery(orpc.subjectOfficers.list.queryOptions());
+  const [option, setOption] = useState<"direct" | "pending">("direct");
+  const [division, setDivision] = useState<DivisionCode | "">("");
+
+  const directMutation = useMutation(
+    orpc.letters.createByAdministrativeOfficerDirect.mutationOptions({
+      onSuccess: (letter) => {
+        toast.success(`Letter ${letter.referenceNumber} sent to the Subject Officer to reserve and forward.`);
+        queryClient.invalidateQueries({ queryKey: orpc.letters.list.key() });
+        navigate({ to: "/letters/$id", params: { id: letter.id } });
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  const pendingMutation = useMutation(
+    orpc.letters.createByAdministrativeOfficerPending.mutationOptions({
+      onSuccess: (letter) => {
+        toast.success(`Letter ${letter.referenceNumber} sent to the Subject Officer to reserve and send on to DCS.`);
+        queryClient.invalidateQueries({ queryKey: orpc.letters.list.key() });
+        navigate({ to: "/letters/$id", params: { id: letter.id } });
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  const form = useForm({
+    defaultValues: {
+      division: "" as DivisionCode | "",
+      subject: "",
+      fromWhom: "",
+      receivedDate: "",
+      subjectOfficerId: "",
+      relevantOfficerIds: [] as string[],
+    },
+    onSubmit: async ({ value }) => {
+      if (!value.subjectOfficerId) return;
+      if (option === "direct") {
+        if (!value.division || value.relevantOfficerIds.length === 0) return;
+        await directMutation.mutateAsync({
+          division: value.division,
+          subject: value.subject,
+          fromWhom: value.fromWhom,
+          receivedDate: new Date(value.receivedDate),
+          subjectOfficerId: value.subjectOfficerId,
+          relevantOfficerIds: value.relevantOfficerIds,
+        });
+      } else {
+        await pendingMutation.mutateAsync({
+          subject: value.subject,
+          fromWhom: value.fromWhom,
+          receivedDate: new Date(value.receivedDate),
+          subjectOfficerId: value.subjectOfficerId,
+        });
+      }
+    },
+  });
+
+  const isPending = directMutation.isPending || pendingMutation.isPending;
+
+  if (subjectOfficers.isPending) return <Loader />;
+
+  if (!subjectOfficers.data || subjectOfficers.data.length === 0) {
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>No Subject Officers yet</EmptyTitle>
+          <EmptyDescription>Ask DCS to create a Subject Officer account before creating letters.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Register a letter</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs value={option} onValueChange={(value) => setOption(value as "direct" | "pending")} className="mb-4">
+          <TabsList>
+            <TabsTrigger value="direct">Send Directly</TabsTrigger>
+            <TabsTrigger value="pending">Send via DCS</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            form.handleSubmit();
+          }}
+        >
+          <FieldGroup>
+            <form.Field name="subjectOfficerId" validators={{ onChange: required("Pick a Subject Officer") }}>
+              {(field) => (
+                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
+                  <FieldLabel>Subject Officer</FieldLabel>
+                  <Select value={field.state.value} onValueChange={(value) => field.handleChange(value ?? "")}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose a Subject Officer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjectOfficers.data.map((subjectOfficer) => (
+                        <SelectItem key={subjectOfficer.id} value={subjectOfficer.id}>
+                          {subjectOfficer.name} ({subjectOfficer.email})
+                          {subjectOfficer.role ? ` — ${USER_ROLE_LABELS[subjectOfficer.role]}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError errors={field.state.meta.errors} />
+                </Field>
+              )}
+            </form.Field>
+
+            {option === "direct" && (
+              <form.Field name="division">
+                {(field) => (
+                  <DivisionField
+                    division={field.state.value}
+                    onDivisionChange={(value) => {
+                      field.handleChange(value);
+                      setDivision(value);
+                      form.setFieldValue("relevantOfficerIds", []);
+                    }}
+                  />
+                )}
+              </form.Field>
+            )}
+            <ReferenceNumberPreview />
+
+            <form.Field name="subject" validators={{ onChange: required("Subject is required") }}>
+              {(field) => (
+                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
+                  <FieldLabel>Subject</FieldLabel>
+                  <Input value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
+                  <FieldError errors={field.state.meta.errors} />
+                </Field>
+              )}
+            </form.Field>
+
+            <form.Field name="fromWhom" validators={{ onChange: required("From Whom is required") }}>
+              {(field) => (
+                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
+                  <FieldLabel>From Whom</FieldLabel>
+                  <Input value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
+                  <FieldError errors={field.state.meta.errors} />
+                </Field>
+              )}
+            </form.Field>
+
+            <form.Field name="receivedDate" validators={{ onChange: required("Received date is required") }}>
+              {(field) => (
+                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
+                  <FieldLabel>Received Date</FieldLabel>
+                  <DatePicker value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} />
+                  <FieldError errors={field.state.meta.errors} />
+                </Field>
+              )}
+            </form.Field>
+
+            {option === "direct" &&
+              (division ? (
+                <form.Field
+                  name="relevantOfficerIds"
+                  validators={{ onChange: ({ value }) => (value.length > 0 ? undefined : { message: "Pick at least one Relevant Officer" }) }}
+                >
+                  {(field) => (
+                    <RelevantOfficersField division={division} value={field.state.value} onChange={field.handleChange} errors={field.state.meta.errors} />
+                  )}
+                </form.Field>
+              ) : (
+                <FieldDescription>Pick a division to choose Relevant Officer(s).</FieldDescription>
+              ))}
+
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Sending…" : "Send to Subject Officer"}
             </Button>
           </FieldGroup>
         </form>

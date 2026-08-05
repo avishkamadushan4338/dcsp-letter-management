@@ -6,7 +6,7 @@ import { ORPCError } from "@orpc/server";
 import { and, asc, count, desc, eq, gte, inArray, isNull, like, ne, or } from "drizzle-orm";
 import { z } from "zod";
 
-import { dcsProcedure, officerProcedure, staffProcedure } from "../index";
+import { administrativeOfficerProcedure, dcsProcedure, officerProcedure, staffProcedure, subjectOfficerProcedure } from "../index";
 import { newId } from "../lib/ids";
 import { issueLetterLink } from "../lib/letter-links";
 import { previewNextLetterNumber, reserveNextLetterNumber } from "../lib/letter-number";
@@ -116,6 +116,75 @@ async function requireOwnSubjectLetter(db: Parameters<typeof issueLetterLink>[0]
   return found;
 }
 
+/**
+ * Shared by `createByDcs` and `createByAdministrativeOfficerDirect`
+ * (APP_FLOW.md §3, §4a) — both pick a division, target Subject/Administrative
+ * Officer, and Relevant Officer(s) up front, landing the letter at
+ * `sent_to_subject` with both officer links emailed immediately. Only
+ * `createdByRole` differs between the two callers.
+ */
+async function createSentToSubjectLetter(
+  db: Parameters<typeof issueLetterLink>[0],
+  params: {
+    division: DivisionCode;
+    subject: string;
+    fromWhom: string;
+    receivedDate: Date;
+    subjectOfficerId: string;
+    relevantOfficerIds: string[];
+    createdByRole: "dcs" | "administrativeOfficer";
+  },
+) {
+  const [subjectOfficer, { officers: relevantOfficers }] = await Promise.all([
+    requireOfficerAccount(db, params.subjectOfficerId),
+    requireActiveOfficers(db, params.relevantOfficerIds, params.division),
+  ]);
+
+  const { number, referenceNumber } = await reserveNextLetterNumber(db);
+
+  // `created` (APP_FLOW.md §2) is a passing state — the form submitting and
+  // it going out to both officers happen in the same request, so it's never
+  // actually persisted; the row is written directly as `sent_to_subject`.
+  const [created] = await db
+    .insert(letter)
+    .values({
+      id: newId(),
+      referenceNumber,
+      number,
+      division: params.division,
+      subject: params.subject,
+      fromWhom: params.fromWhom,
+      receivedDate: params.receivedDate,
+      status: "sent_to_subject",
+      createdByRole: params.createdByRole,
+      subjectOfficerId: subjectOfficer.id,
+    })
+    .returning();
+
+  if (!created) {
+    throw new ORPCError("INTERNAL_SERVER_ERROR");
+  }
+
+  await issueLetterLink(db, {
+    letterId: created.id,
+    role: "subjectOfficer",
+    to: subjectOfficer.email,
+    referenceNumber,
+    subject: created.subject,
+    fromWhom: created.fromWhom,
+    division: params.division,
+  });
+  await assignRelevantOfficers(db, relevantOfficers, {
+    letterId: created.id,
+    referenceNumber,
+    subject: created.subject,
+    fromWhom: created.fromWhom,
+    division: params.division,
+  });
+
+  return created;
+}
+
 export const lettersRouter = {
   previewNextNumber: staffProcedure.handler(async ({ context }) => {
     return previewNextLetterNumber(context.db);
@@ -216,30 +285,60 @@ export const lettersRouter = {
         relevantOfficerIds: z.array(z.string()).min(1),
       }),
     )
-    .handler(async ({ context, input }) => {
-      const [subjectOfficer, { officers: relevantOfficers }] = await Promise.all([
-        requireOfficerAccount(context.db, input.subjectOfficerId),
-        requireActiveOfficers(context.db, input.relevantOfficerIds, input.division),
-      ]);
+    .handler(async ({ context, input }) => createSentToSubjectLetter(context.db, { ...input, createdByRole: "dcs" })),
 
+  /**
+   * Flow 4a — Administrative Officer sends directly (mirrors Flow 1): they
+   * already know the Relevant Officer, but — unlike Subject Officer's own
+   * "Send Directly" (Flow 2, Option A) — the letter still lands with the
+   * target Subject Officer first, who must reserve it before it moves on
+   * (see `subjectMarkReceived` / `subjectForward`).
+   */
+  createByAdministrativeOfficerDirect: administrativeOfficerProcedure
+    .input(
+      z.object({
+        division: divisionCodeSchema,
+        subject: z.string().min(1),
+        fromWhom: z.string().min(1),
+        receivedDate: z.coerce.date(),
+        subjectOfficerId: z.string(),
+        relevantOfficerIds: z.array(z.string()).min(1),
+      }),
+    )
+    .handler(async ({ context, input }) => createSentToSubjectLetter(context.db, { ...input, createdByRole: "administrativeOfficer" })),
+
+  /**
+   * Flow 4a — Administrative Officer sends via DCS: they don't know who
+   * should handle it, so no division or Relevant Officer is picked here
+   * (mirrors Flow 2, Option B). Unlike that flow, this still routes through
+   * the target Subject Officer first — they must reserve it, then escalate
+   * it to DCS themselves (`subjectSendToReview`) rather than the letter
+   * landing directly in DCS's review queue.
+   */
+  createByAdministrativeOfficerPending: administrativeOfficerProcedure
+    .input(
+      z.object({
+        subject: z.string().min(1),
+        fromWhom: z.string().min(1),
+        receivedDate: z.coerce.date(),
+        subjectOfficerId: z.string(),
+      }),
+    )
+    .handler(async ({ context, input }) => {
+      const subjectOfficer = await requireOfficerAccount(context.db, input.subjectOfficerId);
       const { number, referenceNumber } = await reserveNextLetterNumber(context.db);
 
-      // `created` (APP_FLOW.md §2) is a passing state — DCS submitting the
-      // form and it going out to both officers happen in the same request,
-      // so it's never actually persisted; the row is written directly as
-      // `sent_to_subject`.
       const [created] = await context.db
         .insert(letter)
         .values({
           id: newId(),
           referenceNumber,
           number,
-          division: input.division,
           subject: input.subject,
           fromWhom: input.fromWhom,
           receivedDate: input.receivedDate,
           status: "sent_to_subject",
-          createdByRole: "dcs",
+          createdByRole: "administrativeOfficer",
           subjectOfficerId: subjectOfficer.id,
         })
         .returning();
@@ -255,21 +354,14 @@ export const lettersRouter = {
         referenceNumber,
         subject: created.subject,
         fromWhom: created.fromWhom,
-        division: input.division,
-      });
-      await assignRelevantOfficers(context.db, relevantOfficers, {
-        letterId: created.id,
-        referenceNumber,
-        subject: created.subject,
-        fromWhom: created.fromWhom,
-        division: input.division,
+        division: null,
       });
 
       return created;
     }),
 
   /** Flow 2, Option A (APP_FLOW.md §4): Subject Officer sends directly. */
-  createBySubjectOfficerDirect: officerProcedure
+  createBySubjectOfficerDirect: subjectOfficerProcedure
     .input(
       z.object({
         division: divisionCodeSchema,
@@ -323,7 +415,7 @@ export const lettersRouter = {
    * there's nothing to scope a division to yet. DCS derives it from whichever
    * Relevant Officer they assign on review.
    */
-  createBySubjectOfficerPending: officerProcedure
+  createBySubjectOfficerPending: subjectOfficerProcedure
     .input(
       z.object({
         subject: z.string().min(1),
@@ -417,7 +509,9 @@ export const lettersRouter = {
   /**
    * Subject Officer's own dashboard equivalent of the emailed link's "Mark
    * Received" action (APP_FLOW.md §5) — lets a logged-in Subject Officer act
-   * on their letters without needing the emailed link.
+   * on their letters without needing the emailed link. The UI labels this
+   * "Reserve" instead when `createdByRole === "administrativeOfficer"`
+   * (APP_FLOW.md §4a); the status transition underneath is identical.
    */
   subjectMarkReceived: officerProcedure.input(z.object({ id: z.string() })).handler(async ({ context, input }) => {
     const found = await requireOwnSubjectLetter(context.db, input.id, context.session.user.id);
@@ -447,6 +541,42 @@ export const lettersRouter = {
       .returning();
 
     // Spent — the emailed link for this role becomes unusable now too, same as forwarding via the link itself.
+    await context.db
+      .update(letterLink)
+      .set({ invalidatedAt: new Date() })
+      .where(and(eq(letterLink.letterId, input.id), eq(letterLink.role, "subjectOfficer"), isNull(letterLink.invalidatedAt)));
+
+    return updated;
+  }),
+
+  /**
+   * Dashboard equivalent of the emailed link's "Send to DCS for Review"
+   * action (APP_FLOW.md §4a, §5) — the counterpart to `subjectForward` for a
+   * reserved letter that arrived with no Relevant Officer yet
+   * (`createByAdministrativeOfficerPending`). Reuses `pending_review`; DCS's
+   * existing `review` action then assigns a Relevant Officer exactly as it
+   * does for a Subject-Officer-originated one.
+   */
+  subjectSendToReview: officerProcedure.input(z.object({ id: z.string() })).handler(async ({ context, input }) => {
+    const found = await requireOwnSubjectLetter(context.db, input.id, context.session.user.id);
+    if (found.status !== "with_subject_officer") {
+      throw new ORPCError("CONFLICT", { message: "Mark it received before sending it for review." });
+    }
+
+    const existingAssignment = await context.db.query.letterRelevantOfficer.findFirst({
+      where: eq(letterRelevantOfficer.letterId, input.id),
+    });
+    if (existingAssignment) {
+      throw new ORPCError("CONFLICT", { message: "This letter already has a Relevant Officer — forward it instead." });
+    }
+
+    const [updated] = await context.db
+      .update(letter)
+      .set({ status: "pending_review" })
+      .where(eq(letter.id, input.id))
+      .returning();
+
+    // Spent — DCS's `review` action mints a fresh Subject Officer link once it assigns a Relevant Officer.
     await context.db
       .update(letterLink)
       .set({ invalidatedAt: new Date() })

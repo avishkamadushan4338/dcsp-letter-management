@@ -7,7 +7,9 @@ export type LetterLinkEmailInput = {
   referenceNumber: string;
   subject: string | null;
   fromWhom: string | null;
-  division: DivisionCode;
+  // Null only for a Subject Officer link on a letter sent "via DCS" with no
+  // division picked yet.
+  division: DivisionCode | null;
   actionUrl: string;
   /** Present only when this link is for a Relevant Officer who received the letter via reassignment. */
   reassignment?: {
@@ -41,7 +43,7 @@ export function letterLinkEmailHtml(input: LetterLinkEmailInput) {
   const details = `
     <table style="width:100%;font-size:14px;margin:0 0 16px;border-collapse:collapse;">
       <tr><td style="color:#71717a;padding:2px 0;">Reference</td><td style="padding:2px 0;">${input.referenceNumber}</td></tr>
-      <tr><td style="color:#71717a;padding:2px 0;">Division</td><td style="padding:2px 0;">${DIVISION_NAMES[input.division]}</td></tr>
+      <tr><td style="color:#71717a;padding:2px 0;">Division</td><td style="padding:2px 0;">${input.division ? DIVISION_NAMES[input.division] : "Not yet assigned"}</td></tr>
       <tr><td style="color:#71717a;padding:2px 0;">Subject</td><td style="padding:2px 0;">${input.subject ?? "—"}</td></tr>
       <tr><td style="color:#71717a;padding:2px 0;">From</td><td style="padding:2px 0;">${input.fromWhom ?? "—"}</td></tr>
     </table>`;

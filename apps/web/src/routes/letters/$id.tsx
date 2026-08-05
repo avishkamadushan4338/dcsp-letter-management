@@ -216,10 +216,12 @@ function SubjectOfficerActionCard({ letter }: { letter: LetterDetail }) {
     queryClient.invalidateQueries({ queryKey: orpc.letters.list.key() });
   };
 
+  const isAdminOfficerOrigin = letter.createdByRole === "administrativeOfficer";
+
   const markReceived = useMutation(
     orpc.letters.subjectMarkReceived.mutationOptions({
       onSuccess: () => {
-        toast.success("Marked received.");
+        toast.success(isAdminOfficerOrigin ? "Marked as reserved." : "Marked received.");
         invalidate();
       },
       onError: (error) => toast.error(error.message),
@@ -236,6 +238,18 @@ function SubjectOfficerActionCard({ letter }: { letter: LetterDetail }) {
     }),
   );
 
+  const sendToReview = useMutation(
+    orpc.letters.subjectSendToReview.mutationOptions({
+      onSuccess: () => {
+        toast.success("Sent to DCS for review.");
+        invalidate();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  const hasRelevantOfficer = letter.relevantOfficers.length > 0;
+
   return (
     <Card>
       <CardHeader>
@@ -245,11 +259,15 @@ function SubjectOfficerActionCard({ letter }: { letter: LetterDetail }) {
         <MultiOfficerNotice officerNames={letter.relevantOfficers.map((assignment) => assignment.officer.name)} />
         {letter.status === "sent_to_subject" ? (
           <Button disabled={markReceived.isPending} onClick={() => markReceived.mutate({ id: letter.id })}>
-            {markReceived.isPending ? "Marking…" : "Mark Received"}
+            {markReceived.isPending ? "Marking…" : isAdminOfficerOrigin ? "Reserve" : "Mark Received"}
           </Button>
-        ) : (
+        ) : hasRelevantOfficer ? (
           <Button disabled={forward.isPending} onClick={() => forward.mutate({ id: letter.id })}>
             {forward.isPending ? "Sending…" : "Send to Relevant Officer"}
+          </Button>
+        ) : (
+          <Button disabled={sendToReview.isPending} onClick={() => sendToReview.mutate({ id: letter.id })}>
+            {sendToReview.isPending ? "Sending…" : "Send to DCS for Review"}
           </Button>
         )}
       </CardContent>

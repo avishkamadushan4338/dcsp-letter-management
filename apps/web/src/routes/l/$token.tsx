@@ -85,8 +85,8 @@ function LinkContent({ token, data }: { token: string; data: LinkData }) {
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt className="text-muted-foreground">Division</dt>
-            {/* division is always set once a link exists to view — pending-review letters never get one. */}
-            <dd className="font-medium">{DIVISION_NAMES[letter.division!]}</dd>
+            {/* Null while a Subject Officer link exists for an Administrative Officer's "Send via DCS" letter, before DCS assigns a Relevant Officer. */}
+            <dd className="font-medium">{letter.division ? DIVISION_NAMES[letter.division] : "Not yet assigned"}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">From Whom</dt>
@@ -101,7 +101,12 @@ function LinkContent({ token, data }: { token: string; data: LinkData }) {
         {role === "subjectOfficer" ? (
           <div className="flex flex-col gap-3">
             <MultiOfficerNotice officerNames={letter.relevantOfficers.map((assignment) => assignment.officer.name)} />
-            <SubjectOfficerActions token={token} status={letter.status} />
+            <SubjectOfficerActions
+              token={token}
+              status={letter.status}
+              createdByRole={letter.createdByRole}
+              hasRelevantOfficer={letter.relevantOfficers.length > 0}
+            />
           </div>
         ) : (
           <RelevantOfficerActions
@@ -125,14 +130,25 @@ function ActionDone({ text }: { text: string }) {
   );
 }
 
-function SubjectOfficerActions({ token, status }: { token: string; status: string }) {
+function SubjectOfficerActions({
+  token,
+  status,
+  createdByRole,
+  hasRelevantOfficer,
+}: {
+  token: string;
+  status: string;
+  createdByRole: string;
+  hasRelevantOfficer: boolean;
+}) {
   const queryClient = useQueryClient();
   const invalidate = () => queryClient.invalidateQueries({ queryKey: orpc.letterLinks.get.key({ input: { token } }) });
+  const isAdminOfficerOrigin = createdByRole === "administrativeOfficer";
 
   const markReceived = useMutation(
     orpc.letterLinks.subjectMarkReceived.mutationOptions({
       onSuccess: () => {
-        toast.success("Marked received.");
+        toast.success(isAdminOfficerOrigin ? "Marked as reserved." : "Marked received.");
         invalidate();
       },
       onError: (error) => toast.error(error.message),
@@ -149,18 +165,35 @@ function SubjectOfficerActions({ token, status }: { token: string; status: strin
     }),
   );
 
+  const sendToReview = useMutation(
+    orpc.letterLinks.subjectSendToReview.mutationOptions({
+      onSuccess: () => {
+        toast.success("Sent to DCS for review.");
+        invalidate();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
   if (status === "sent_to_subject") {
     return (
       <Button disabled={markReceived.isPending} onClick={() => markReceived.mutate({ token })}>
-        {markReceived.isPending ? "Marking…" : "Mark Received"}
+        {markReceived.isPending ? "Marking…" : isAdminOfficerOrigin ? "Reserve" : "Mark Received"}
       </Button>
     );
   }
 
   if (status === "with_subject_officer") {
+    if (hasRelevantOfficer) {
+      return (
+        <Button disabled={forward.isPending} onClick={() => forward.mutate({ token })}>
+          {forward.isPending ? "Sending…" : "Send to Relevant Officer"}
+        </Button>
+      );
+    }
     return (
-      <Button disabled={forward.isPending} onClick={() => forward.mutate({ token })}>
-        {forward.isPending ? "Sending…" : "Send to Relevant Officer"}
+      <Button disabled={sendToReview.isPending} onClick={() => sendToReview.mutate({ token })}>
+        {sendToReview.isPending ? "Sending…" : "Send to DCS for Review"}
       </Button>
     );
   }

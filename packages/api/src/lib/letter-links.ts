@@ -17,7 +17,9 @@ export type LetterLinkTarget = {
   referenceNumber: string;
   subject: string | null;
   fromWhom: string | null;
-  division: DivisionCode;
+  // Null only for a Subject Officer link on an Administrative Officer's
+  // "Send via DCS" letter (APP_FLOW.md §4a) — no division is picked yet.
+  division: DivisionCode | null;
   /** Set only for role="relevantOfficer" links — which of the letter's (possibly several) independent officer assignments this link belongs to. */
   letterRelevantOfficerId?: string;
   reassignment?: { fromOfficerName: string; note: string | null };

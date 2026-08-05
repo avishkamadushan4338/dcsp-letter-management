@@ -98,6 +98,32 @@ export const letterLinksRouter = {
     return updated;
   }),
 
+  /**
+   * The counterpart to `subjectForward` for a reserved letter that arrived
+   * with no Relevant Officer yet (APP_FLOW.md §4a, `createByAdministrativeOfficerPending`)
+   * — escalates it to DCS for review instead of forwarding it on.
+   */
+  subjectSendToReview: publicProcedure.input(z.object({ token: z.string() })).handler(async ({ context, input }) => {
+    const link = await resolveActiveLink(context.db, input.token, "subjectOfficer");
+    if (link.letter.status !== "with_subject_officer") {
+      throw new ORPCError("CONFLICT", { message: "Mark it received before sending it for review." });
+    }
+    if (link.letter.relevantOfficers.length > 0) {
+      throw new ORPCError("CONFLICT", { message: "This letter already has a Relevant Officer — forward it instead." });
+    }
+
+    const [updated] = await context.db
+      .update(letter)
+      .set({ status: "pending_review" })
+      .where(eq(letter.id, link.letterId))
+      .returning();
+
+    // Spent — DCS's `review` action mints a fresh Subject Officer link once it assigns a Relevant Officer.
+    await invalidateLink(context.db, link.id);
+
+    return updated;
+  }),
+
   relevantMarkReceived: publicProcedure.input(z.object({ token: z.string() })).handler(async ({ context, input }) => {
     const link = await resolveActiveLink(context.db, input.token, "relevantOfficer");
     const assignment = requireAssignment(link);

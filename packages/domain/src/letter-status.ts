@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-/** Every possible letter status (APP_FLOW.md §2). Status only ever moves forward. */
+/**
+ * Every possible letter status (APP_FLOW.md §2). Status only ever moves
+ * forward, except when reassignment resets part of the relevant-officer
+ * stage, or a Subject Officer escalates an Administrative-Officer-originated
+ * "Send via DCS" letter back to `pending_review` for DCS to review
+ * (APP_FLOW.md §4a).
+ */
 export const LETTER_STATUSES = [
   "pending_review",
   "created",

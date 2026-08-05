@@ -46,5 +46,20 @@ export const officerProcedure = requireRole(...OFFICER_ROLES);
  */
 export const rosterProcedure = requireRole("subjectOfficer");
 
+/**
+ * Subject Officer only — also gates their own letter self-origination
+ * (APP_FLOW.md §4), which Administrative Officer no longer shares: an
+ * Administrative-Officer-created letter must always land with a Subject
+ * Officer first (APP_FLOW.md §4a) instead of skipping straight to the
+ * Relevant Officer or DCS's review queue.
+ */
+export const subjectOfficerProcedure = requireRole("subjectOfficer");
+
+/** Administrative Officer only — creating a letter that must route through a Subject Officer first (APP_FLOW.md §4a). */
+export const administrativeOfficerProcedure = requireRole("administrativeOfficer");
+
+/** DCS or Administrative Officer — both pick a target Subject/Administrative Officer account when creating a letter. */
+export const dcsOrAdministrativeOfficerProcedure = requireRole("dcs", "administrativeOfficer");
+
 /** Any logged-in role — used by read endpoints every dashboard shares. */
 export const staffProcedure = requireRole("dcs", ...OFFICER_ROLES);
