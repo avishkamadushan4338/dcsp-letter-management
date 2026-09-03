@@ -3,7 +3,7 @@ import { letter, letterRelevantOfficer } from "@dcsp-letter-management/db/schema
 import { LETTER_STATUSES } from "@dcsp-letter-management/domain/letter-status";
 import { and, asc, count, eq, gte, isNotNull, isNull, lte, ne } from "drizzle-orm";
 
-import { dcsProcedure, officerProcedure } from "../index";
+import { dcsOrAdministrativeOfficerProcedure, officerProcedure } from "../index";
 
 type Db = ReturnType<typeof createDb>;
 
@@ -32,9 +32,10 @@ async function findOverdueAssignments(db: Db, subjectOfficerId?: string) {
 export const dashboardRouter = {
   /**
    * Everything the DCS dashboard's headline numbers and breakdown charts
-   * need, bundled into one round trip.
+   * need, bundled into one round trip. Also powers Administrative Officer's
+   * read-only oversight dashboard (same system-wide numbers, no actions).
    */
-  overview: dcsProcedure.handler(async ({ context }) => {
+  overview: dcsOrAdministrativeOfficerProcedure.handler(async ({ context }) => {
     const now = new Date();
     const startOfToday = startOfUtcDay(now);
 
@@ -86,8 +87,12 @@ export const dashboardRouter = {
     };
   }),
 
-  /** The full, actionable list behind the "overdue Relevant Officer" headline number — oldest assignment first. */
-  overdueRelevantOfficers: dcsProcedure.handler(async ({ context }) => {
+  /**
+   * The full list behind the "overdue Relevant Officer" headline number —
+   * oldest assignment first. Read-only, so also available to Administrative
+   * Officer's oversight dashboard.
+   */
+  overdueRelevantOfficers: dcsOrAdministrativeOfficerProcedure.handler(async ({ context }) => {
     const overdueAssignments = await findOverdueAssignments(context.db);
     return overdueAssignments.map((assignment) => ({
       id: assignment.id,

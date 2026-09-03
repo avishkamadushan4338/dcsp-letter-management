@@ -100,8 +100,9 @@ export const letterLinksRouter = {
 
   /**
    * The counterpart to `subjectForward` for a reserved letter that arrived
-   * with no Relevant Officer yet (APP_FLOW.md §4a, `createByAdministrativeOfficerPending`)
-   * — escalates it to DCS for review instead of forwarding it on.
+   * with no Relevant Officer yet (APP_FLOW.md §4a) — escalates it to DCS for
+   * review instead of forwarding it on. Kept for letters created before
+   * Administrative Officer's letter-origination flow was removed.
    */
   subjectSendToReview: publicProcedure.input(z.object({ token: z.string() })).handler(async ({ context, input }) => {
     const link = await resolveActiveLink(context.db, input.token, "subjectOfficer");

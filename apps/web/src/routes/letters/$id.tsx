@@ -1,5 +1,5 @@
 import { DIVISION_NAMES } from "@dcsp-letter-management/domain/division";
-import { isOfficerRole, type UserRole, USER_ROLE_LABELS } from "@dcsp-letter-management/domain/roles";
+import { type UserRole, USER_ROLE_LABELS } from "@dcsp-letter-management/domain/roles";
 import { Badge } from "@dcsp-letter-management/ui/components/badge";
 import { Button } from "@dcsp-letter-management/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@dcsp-letter-management/ui/components/card";
@@ -101,7 +101,7 @@ function LetterDetail({ letter, role }: { letter: LetterDetail; role: UserRole |
 
       {role === "dcs" && letter.status === "pending_review" && <ReviewCard letter={letter} />}
 
-      {isOfficerRole(role) && (letter.status === "sent_to_subject" || letter.status === "with_subject_officer") && (
+      {role === "subjectOfficer" && (letter.status === "sent_to_subject" || letter.status === "with_subject_officer") && (
         <SubjectOfficerActionCard letter={letter} />
       )}
 

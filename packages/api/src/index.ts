@@ -55,10 +55,11 @@ export const rosterProcedure = requireRole("subjectOfficer");
  */
 export const subjectOfficerProcedure = requireRole("subjectOfficer");
 
-/** Administrative Officer only — creating a letter that must route through a Subject Officer first (APP_FLOW.md §4a). */
-export const administrativeOfficerProcedure = requireRole("administrativeOfficer");
-
-/** DCS or Administrative Officer — both pick a target Subject/Administrative Officer account when creating a letter. */
+/**
+ * DCS or Administrative Officer — read-only, system-wide oversight endpoints
+ * (dashboard stats, overdue lists). Administrative Officer gets the same
+ * unfiltered view DCS does here; it just has no procedure that lets it write.
+ */
 export const dcsOrAdministrativeOfficerProcedure = requireRole("dcs", "administrativeOfficer");
 
 /** Any logged-in role — used by read endpoints every dashboard shares. */

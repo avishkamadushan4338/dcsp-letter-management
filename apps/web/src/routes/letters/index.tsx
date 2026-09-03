@@ -5,7 +5,7 @@ import {
   letterStatusSchema,
   type LetterStatus,
 } from "@dcsp-letter-management/domain/letter-status";
-import { isOfficerRole, type UserRole } from "@dcsp-letter-management/domain/roles";
+import type { UserRole } from "@dcsp-letter-management/domain/roles";
 import { Button } from "@dcsp-letter-management/ui/components/button";
 import {
   Dialog,
@@ -216,7 +216,7 @@ function LettersPage() {
         // Subject Officer sees a one-click action here instead of the status
         // badge for the two statuses that are actually waiting on them —
         // no need to open the letter just to mark it received or forward it.
-        if (isOfficerRole(role) && item.status === "sent_to_subject") {
+        if (role === "subjectOfficer" && item.status === "sent_to_subject") {
           const isThisPending = markReceived.isPending && markReceived.variables?.id === item.id;
           return (
             <Button
@@ -231,7 +231,7 @@ function LettersPage() {
             </Button>
           );
         }
-        if (isOfficerRole(role) && item.status === "with_subject_officer") {
+        if (role === "subjectOfficer" && item.status === "with_subject_officer") {
           const isThisPending = forward.isPending && forward.variables?.id === item.id;
           return (
             <Button
@@ -280,7 +280,7 @@ function LettersPage() {
       <div className="mx-auto flex max-w-5xl flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-lg font-semibold">Letters</h1>
-          <Button onClick={() => navigate({ to: "/letters/new" })}>New Letter</Button>
+          {role !== "administrativeOfficer" && <Button onClick={() => navigate({ to: "/letters/new" })}>New Letter</Button>}
         </div>
 
         <div className="flex flex-wrap gap-2">

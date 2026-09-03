@@ -32,10 +32,12 @@ const SUBJECT_OFFICER_LINKS: NavLink[] = [
 
 // Independent from SUBJECT_OFFICER_LINKS on purpose — Administrative Officer
 // is its own profile, not a filtered view of Subject Officer's, so its nav
-// isn't derived from the other array.
+// isn't derived from the other array. No "New Letter" and no "Print Numbers"
+// — it's view-only, sees every letter (not just ones routed to it), but
+// never originates or acts on one.
 const ADMINISTRATIVE_OFFICER_LINKS: NavLink[] = [
   { to: "/dashboard", label: "Dashboard" },
-  { to: "/letters/new", label: "New Letter" },
+  { to: "/letters", label: "Letters" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

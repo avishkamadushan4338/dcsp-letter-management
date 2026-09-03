@@ -1,5 +1,6 @@
 import { DIVISION_CODES, DIVISION_NAMES, type DivisionCode } from "@dcsp-letter-management/domain/division";
 import { LETTER_STATUS_COLOR, LETTER_STATUS_LABELS, type LetterStatus } from "@dcsp-letter-management/domain/letter-status";
+import { USER_ROLE_LABELS, type UserRole } from "@dcsp-letter-management/domain/roles";
 import { Card, CardContent, CardHeader, CardTitle } from "@dcsp-letter-management/ui/components/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@dcsp-letter-management/ui/components/empty";
 import { cn } from "@dcsp-letter-management/ui/lib/utils";
@@ -18,6 +19,7 @@ import {
 
 import { AppShell } from "@/components/app-shell";
 import { DataTable } from "@/components/data-table";
+import { LetterStatusBadge } from "@/components/letters/status-badge";
 import { LETTER_STATUS_BAR_CLASSES } from "@/components/letters/status-colors";
 import Loader from "@/components/loader";
 import { formatDate, formatRelativeToNow } from "@/lib/format";
@@ -91,7 +93,13 @@ function DashboardPage() {
     );
   }
 
-  return role === "dcs" ? <DcsDashboard /> : <SubjectOfficerDashboard />;
+  return role === "dcs" ? (
+    <DcsDashboard />
+  ) : role === "administrativeOfficer" ? (
+    <AdministrativeOfficerDashboard />
+  ) : (
+    <SubjectOfficerDashboard />
+  );
 }
 
 function DcsDashboard() {
@@ -256,6 +264,192 @@ function DcsDashboard() {
                 columns={letterQueueColumnsWithDivision}
                 data={recentlyCompleted.data?.items ?? []}
                 onRowClick={(row) => navigate({ to: "/letters/$id", params: { id: row.id } })}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </AppShell>
+  );
+}
+
+type RegisterItem = {
+  id: string;
+  referenceNumber: string;
+  subject: string;
+  fromWhom: string;
+  division: DivisionCode | null;
+  status: LetterStatus;
+  createdByRole: UserRole;
+  reviewedAt: string | Date | null;
+  receivedDate: string | Date;
+};
+
+/**
+ * How a letter reached the system, derived from what's already on it rather
+ * than a separate stored field: DCS-registered letters always have a
+ * division and Relevant Officer up front; an officer-originated one either
+ * skipped straight past `pending_review` ("Sent Directly") or passed through
+ * it ("Sent via DCS"), and once `reviewedAt` is set that review has happened.
+ */
+function routingLabel(item: RegisterItem): string {
+  if (item.createdByRole === "dcs") return "Registered by Admin (DCS)";
+  const addedBy = USER_ROLE_LABELS[item.createdByRole];
+  if (item.reviewedAt) return `${addedBy} — Sent via DCS (Reviewed)`;
+  if (item.status === "pending_review") return `${addedBy} — Awaiting DCS Review`;
+  return `${addedBy} — Sent Directly`;
+}
+
+const registerColumns: ColumnDef<RegisterItem>[] = [
+  { accessorKey: "referenceNumber", header: "Reference #" },
+  { accessorKey: "subject", header: "Subject" },
+  { accessorKey: "fromWhom", header: "From Whom" },
+  {
+    id: "division",
+    header: "Division",
+    cell: ({ row }) => (row.original.division ? DIVISION_NAMES[row.original.division] : "—"),
+  },
+  { id: "routing", header: "How It Was Added", cell: ({ row }) => routingLabel(row.original) },
+  { id: "status", header: "Status", cell: ({ row }) => <LetterStatusBadge status={row.original.status} /> },
+  { id: "receivedDate", header: "Received", cell: ({ row }) => formatDate(row.original.receivedDate) },
+];
+
+/**
+ * Read-only oversight dashboard for the Administrative Officer — same
+ * system-wide numbers DCS sees (APP_FLOW.md §4a), but with no Review button,
+ * no officer-link management, and no per-row actions anywhere. It exists so
+ * the Administrative Officer can watch every letter's progress — how it was
+ * added, whether it went out directly or via DCS review, and where it
+ * currently stands — without being able to act on any of it.
+ */
+function AdministrativeOfficerDashboard() {
+  const navigate = useNavigate();
+  const overview = useQuery(orpc.dashboard.overview.queryOptions());
+  const register = useQuery(
+    orpc.letters.list.queryOptions({
+      input: { sortBy: "createdAt", sortDir: "desc", pageSize: 15 },
+    }),
+  );
+  const overdue = useQuery(orpc.dashboard.overdueRelevantOfficers.queryOptions());
+
+  const stats = overview.data;
+
+  return (
+    <AppShell>
+      <div className="mx-auto flex max-w-5xl flex-col gap-6">
+        <h1 className="text-lg font-semibold">Dashboard</h1>
+        <p className="-mt-4 text-sm text-muted-foreground">View only — every letter in the system, at whatever stage it's at.</p>
+
+        {overview.isPending ? (
+          <Loader />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <StatTile
+                icon={ClipboardListIcon}
+                label="Letters to Review Today"
+                value={stats?.reviewQueue.total ?? 0}
+                detail={`${stats?.reviewQueue.receivedToday ?? 0} received today`}
+                to="/letters"
+                search={{ status: "pending_review" }}
+              />
+              <StatTile
+                icon={AlertTriangleIcon}
+                label="Not Received by Relevant Officer (48h+)"
+                value={stats?.overdueRelevantOfficer.letters ?? 0}
+                detail={
+                  stats && stats.overdueRelevantOfficer.assignments > stats.overdueRelevantOfficer.letters
+                    ? `${stats.overdueRelevantOfficer.assignments} assignments waiting`
+                    : undefined
+                }
+                tone="critical"
+                onClick={() =>
+                  document.getElementById("overdue-relevant-officers")?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+              />
+              <StatTile
+                icon={Layers3Icon}
+                label="In Progress"
+                value={stats?.inProgress ?? 0}
+                detail="Not yet actioned"
+                to="/letters"
+                search={{ status: "in_progress" }}
+              />
+              <StatTile
+                icon={CheckCircle2Icon}
+                label="Action Taken"
+                value={stats?.actionTaken ?? 0}
+                detail="Completed"
+                tone="success"
+                to="/letters"
+                search={{ status: "action_taken" }}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Letters by Status</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <StatusBreakdown data={stats?.statusBreakdown ?? []} />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>In Progress by Division</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <DivisionBreakdown data={stats?.divisionBreakdown ?? []} />
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Letters Register</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {register.isPending ? (
+              <Loader />
+            ) : (register.data?.items.length ?? 0) === 0 ? (
+              <Empty className="p-6">
+                <EmptyHeader>
+                  <EmptyTitle>No letters yet</EmptyTitle>
+                  <EmptyDescription>Letters added by DCS or the Subject Officer will appear here.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <DataTable
+                columns={registerColumns}
+                data={register.data?.items ?? []}
+                onRowClick={(row) => navigate({ to: "/letters/$id", params: { id: row.id } })}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card id="overdue-relevant-officers" className="scroll-mt-4">
+          <CardHeader>
+            <CardTitle>Overdue Relevant Officer Pickups</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {overdue.isPending ? (
+              <Loader />
+            ) : (overdue.data?.length ?? 0) === 0 ? (
+              <Empty className="p-6">
+                <EmptyHeader>
+                  <EmptyTitle>Nothing overdue</EmptyTitle>
+                  <EmptyDescription>Assignments not received within 48 hours will appear here.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <DataTable
+                columns={overdueColumns}
+                data={overdue.data ?? []}
+                onRowClick={(row) => navigate({ to: "/letters/$id", params: { id: row.letter.id } })}
               />
             )}
           </CardContent>

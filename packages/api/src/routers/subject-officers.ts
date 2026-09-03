@@ -5,18 +5,17 @@ import { ORPCError } from "@orpc/server";
 import { asc, inArray, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { dcsOrAdministrativeOfficerProcedure, dcsProcedure } from "../index";
+import { dcsProcedure } from "../index";
 
 export const subjectOfficersRouter = {
   /**
    * Every officer account (Subject Officer or Administrative Officer) — for
-   * DCS's "Subject Officers" management page. DCS's and Administrative
-   * Officer's "New Letter" pickers also call this, but filter the result
-   * down to Subject Officer accounts only client-side, since a letter's
-   * target officer must be a Subject Officer specifically (APP_FLOW.md §3,
-   * §4a).
+   * DCS's "Subject Officers" management page. DCS's "New Letter" picker also
+   * calls this, but filters the result down to Subject Officer accounts only
+   * client-side, since a letter's target officer must be a Subject Officer
+   * specifically (APP_FLOW.md §3).
    */
-  list: dcsOrAdministrativeOfficerProcedure.handler(async ({ context }) => {
+  list: dcsProcedure.handler(async ({ context }) => {
     return context.db.query.user.findMany({
       where: inArray(user.role, OFFICER_ROLES),
       orderBy: [asc(user.name)],
