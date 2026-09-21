@@ -52,6 +52,7 @@ function required(message = "Required") {
 function OfficersPage() {
   const { role, isPending } = useUserRole();
   const query = useQuery(orpc.officers.list.queryOptions());
+  const officers = query.data?.filter((officer) => officer.active) ?? [];
 
   return (
     <AppShell>
@@ -63,7 +64,7 @@ function OfficersPage() {
 
         {isPending || query.isPending ? (
           <Loader />
-        ) : !query.data || query.data.length === 0 ? (
+        ) : officers.length === 0 ? (
           <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -87,16 +88,18 @@ function OfficersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {query.data.map((officer) => (
+              {officers.map((officer) => (
                 <TableRow key={officer.id}>
                   <TableCell>{officer.name}</TableCell>
                   <TableCell>{officer.position}</TableCell>
                   <TableCell>{DIVISION_NAMES[officer.division]}</TableCell>
                   <TableCell>
-                    <Badge variant={officer.active ? "secondary" : "outline"}>{officer.active ? "Active" : "Removed"}</Badge>
+                    <Badge variant="secondary">Active</Badge>
                   </TableCell>
                   {role === "subjectOfficer" && (
-                    <TableCell>{officer.active && <RemoveOfficerDialog id={officer.id} name={officer.name} />}</TableCell>
+                    <TableCell>
+                      <RemoveOfficerDialog id={officer.id} name={officer.name} />
+                    </TableCell>
                   )}
                 </TableRow>
               ))}
