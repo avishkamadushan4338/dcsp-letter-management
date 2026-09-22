@@ -74,19 +74,20 @@ export function createAuth() {
 }
 
 /**
- * Resets the two testing accounts (see `SEED_USERS`) to a known state: each
- * one is deleted first if it already exists (cascading to its `session` and
- * `account` rows), then recreated fresh via the given `auth` instance's own
- * API.
+ * Creates the two testing accounts (see `SEED_USERS`) if they don't already
+ * exist. Never deletes or recreates an existing user — on Cloudflare Workers
+ * this runs on every cold-started isolate, and deleting an existing user
+ * cascades to its `session` rows, silently logging out anyone using that
+ * account on another device.
  */
 export async function ensureSeedUsers(auth: ReturnType<typeof createAuth>) {
-  console.log(`[seed] seeding ${SEED_USERS.length} test user(s): ${SEED_USERS.map((u) => u.email).join(", ")}`);
-
   const db = createDb();
 
   for (const seedUser of SEED_USERS) {
-    const deleted = await db.delete(schema.user).where(eq(schema.user.email, seedUser.email)).returning({ id: schema.user.id });
-    console.log(`[seed] ${seedUser.email}: removed ${deleted.length} existing account(s)`);
+    const existing = await db.query.user.findFirst({ where: eq(schema.user.email, seedUser.email) });
+    if (existing) {
+      continue;
+    }
 
     const { user } = await auth.api.signUpEmail({
       body: {
@@ -100,6 +101,4 @@ export async function ensureSeedUsers(auth: ReturnType<typeof createAuth>) {
     await db.update(schema.user).set({ role: seedUser.role }).where(eq(schema.user.id, user.id));
     console.log(`[seed] ${seedUser.email}: set role="${seedUser.role}"`);
   }
-
-  console.log("[seed] done");
 }
