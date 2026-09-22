@@ -1,7 +1,9 @@
 import type { createDb } from "@dcsp-letter-management/db";
-import { letter, letterRelevantOfficer } from "@dcsp-letter-management/db/schema/letters";
+import { letter, letterRelevantOfficer, officer } from "@dcsp-letter-management/db/schema/letters";
+import { divisionCodeSchema } from "@dcsp-letter-management/domain/division";
 import { LETTER_STATUSES } from "@dcsp-letter-management/domain/letter-status";
 import { and, asc, count, eq, gte, isNotNull, isNull, lte, ne } from "drizzle-orm";
+import { z } from "zod";
 
 import { dcsOrAdministrativeOfficerProcedure, officerProcedure } from "../index";
 
@@ -159,6 +161,73 @@ export const dashboardRouter = {
       },
       statusBreakdown: LETTER_STATUSES.map((status) => ({ status, total: statusCounts.get(status) ?? 0 })),
     };
+  }),
+
+  /**
+   * DCS's Monthly Report (also visible to Administrative Officer's oversight
+   * view): every letter received within a date range, optionally narrowed by
+   * division and/or Relevant Officer, together with the turnaround-time
+   * chain (`receivedDate` → `reviewedAt` → `subjectReceivedAt` →
+   * `subjectForwardedAt` → each Relevant Officer's `receivedAt`/`actionTakenAt`)
+   * so the caller can see how long each letter took at every stage.
+   */
+  monthlyReport: dcsOrAdministrativeOfficerProcedure
+    .input(
+      z.object({
+        dateFrom: z.coerce.date().optional(),
+        dateTo: z.coerce.date().optional(),
+        division: divisionCodeSchema.optional(),
+        officerId: z.string().optional(),
+      }),
+    )
+    .handler(async ({ context, input }) => {
+      const conditions = [
+        input.dateFrom ? gte(letter.receivedDate, input.dateFrom) : undefined,
+        input.dateTo ? lte(letter.receivedDate, input.dateTo) : undefined,
+        input.division ? eq(letter.division, input.division) : undefined,
+      ].filter((condition) => condition !== undefined);
+      const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const items = await context.db.query.letter.findMany({
+        where,
+        with: { relevantOfficers: { with: { officer: true } }, subjectOfficer: true },
+        orderBy: [asc(letter.receivedDate)],
+      });
+
+      // Officer filter applied after the join fetch — a letter can have
+      // several independent Relevant Officer assignments, so it's kept
+      // whenever any one of them matches, not filtered row-by-row.
+      const filtered = input.officerId
+        ? items.filter((item) => item.relevantOfficers.some((assignment) => assignment.officerId === input.officerId))
+        : items;
+
+      return filtered.map((item) => ({
+        id: item.id,
+        referenceNumber: item.referenceNumber,
+        division: item.division,
+        subject: item.subject,
+        fromWhom: item.fromWhom,
+        status: item.status,
+        receivedDate: item.receivedDate,
+        reviewedAt: item.reviewedAt,
+        subjectReceivedAt: item.subjectReceivedAt,
+        subjectForwardedAt: item.subjectForwardedAt,
+        subjectOfficer: { id: item.subjectOfficer.id, name: item.subjectOfficer.name },
+        relevantOfficers: item.relevantOfficers.map((assignment) => ({
+          id: assignment.id,
+          officer: { id: assignment.officer.id, name: assignment.officer.name },
+          receivedAt: assignment.receivedAt,
+          actionTakenAt: assignment.actionTakenAt,
+        })),
+      }));
+    }),
+
+  /** Options for the Monthly Report's division/officer filters — every active officer, grouped implicitly by division. */
+  monthlyReportOfficers: dcsOrAdministrativeOfficerProcedure.handler(async ({ context }) => {
+    return context.db.query.officer.findMany({
+      where: eq(officer.active, true),
+      orderBy: [asc(officer.division), asc(officer.name)],
+    });
   }),
 
   /** Subject-Officer-scoped equivalent of `overdueRelevantOfficers` — only letters they forwarded. */

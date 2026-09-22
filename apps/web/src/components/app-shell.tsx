@@ -18,6 +18,7 @@ const DCS_LINKS: NavLink[] = [
   { to: "/letters", label: "Letters" },
   { to: "/letters/new", label: "New Letter" },
   { to: "/print-numbers", label: "Print Numbers" },
+  { to: "/reports", label: "Monthly Report" },
   { to: "/subject-officer", label: "Subject Officers" },
 ];
 
@@ -38,6 +39,7 @@ const SUBJECT_OFFICER_LINKS: NavLink[] = [
 const ADMINISTRATIVE_OFFICER_LINKS: NavLink[] = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/letters", label: "Letters" },
+  { to: "/reports", label: "Monthly Report" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
