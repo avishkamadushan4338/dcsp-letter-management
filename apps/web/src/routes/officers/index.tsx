@@ -97,7 +97,8 @@ function OfficersPage() {
                     <Badge variant="secondary">Active</Badge>
                   </TableCell>
                   {role === "subjectOfficer" && (
-                    <TableCell>
+                    <TableCell className="flex gap-2">
+                      <EditOfficerDialog officer={officer} />
                       <RemoveOfficerDialog id={officer.id} name={officer.name} />
                     </TableCell>
                   )}
@@ -215,6 +216,137 @@ function AddOfficerDialog() {
             <DialogFooter>
               <Button type="submit" disabled={createMutation.isPending}>
                 {createMutation.isPending ? "Adding…" : "Add Officer"}
+              </Button>
+            </DialogFooter>
+          </FieldGroup>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type Officer = {
+  id: string;
+  name: string;
+  email: string;
+  position: string;
+  division: DivisionCode;
+};
+
+function EditOfficerDialog({ officer }: { officer: Officer }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+
+  const updateMutation = useMutation(
+    orpc.officers.update.mutationOptions({
+      onSuccess: () => {
+        toast.success("Officer updated.");
+        queryClient.invalidateQueries({ queryKey: orpc.officers.list.key() });
+        queryClient.invalidateQueries({ queryKey: orpc.officers.listActive.key() });
+        setOpen(false);
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  const form = useForm({
+    defaultValues: {
+      name: officer.name,
+      email: officer.email,
+      position: officer.position as OfficerPosition | "",
+      division: officer.division as DivisionCode | "",
+    },
+    onSubmit: async ({ value }) => {
+      if (!value.division || !value.position) return;
+      await updateMutation.mutateAsync({
+        id: officer.id,
+        name: value.name,
+        email: value.email,
+        position: value.position,
+        division: value.division,
+      });
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="ghost" size="sm" />}>Edit</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit {officer.name}</DialogTitle>
+        </DialogHeader>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            form.handleSubmit();
+          }}
+        >
+          <FieldGroup>
+            <form.Field name="name" validators={{ onChange: required("Name is required") }}>
+              {(field) => (
+                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
+                  <FieldLabel>Name</FieldLabel>
+                  <Input value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
+                  <FieldError errors={field.state.meta.errors} />
+                </Field>
+              )}
+            </form.Field>
+
+            <form.Field name="email" validators={{ onChange: required("Email is required") }}>
+              {(field) => (
+                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
+                  <FieldLabel>Email</FieldLabel>
+                  <Input type="email" value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
+                  <FieldError errors={field.state.meta.errors} />
+                </Field>
+              )}
+            </form.Field>
+
+            <form.Field name="position" validators={{ onChange: required("Position is required") }}>
+              {(field) => (
+                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
+                  <FieldLabel>Position</FieldLabel>
+                  <Select value={field.state.value} onValueChange={(value) => field.handleChange(value as OfficerPosition)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose a position" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {OFFICER_POSITIONS.map((position) => (
+                        <SelectItem key={position} value={position}>
+                          {position}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError errors={field.state.meta.errors} />
+                </Field>
+              )}
+            </form.Field>
+
+            <form.Field name="division" validators={{ onChange: required("Division is required") }}>
+              {(field) => (
+                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
+                  <FieldLabel>Division</FieldLabel>
+                  <Select value={field.state.value} onValueChange={(value) => field.handleChange(value as DivisionCode)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose a division" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DIVISION_CODES.map((code) => (
+                        <SelectItem key={code} value={code}>
+                          {DIVISION_NAMES[code]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError errors={field.state.meta.errors} />
+                </Field>
+              )}
+            </form.Field>
+
+            <DialogFooter>
+              <Button type="submit" disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? "Saving…" : "Save"}
               </Button>
             </DialogFooter>
           </FieldGroup>

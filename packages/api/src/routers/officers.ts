@@ -57,6 +57,26 @@ export const officersRouter = {
       return created;
     }),
 
+  update: rosterProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1),
+        email: z.email(),
+        position: officerPositionSchema,
+        division: divisionCodeSchema,
+      }),
+    )
+    .handler(async ({ context, input }) => {
+      const { id, ...values } = input;
+      const [updated] = await context.db.update(officer).set(values).where(eq(officer.id, id)).returning();
+
+      if (!updated) {
+        throw new ORPCError("NOT_FOUND");
+      }
+      return updated;
+    }),
+
   remove: rosterProcedure.input(z.object({ id: z.string() })).handler(async ({ context, input }) => {
     const [updated] = await context.db
       .update(officer)
