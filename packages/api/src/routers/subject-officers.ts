@@ -52,4 +52,27 @@ export const subjectOfficersRouter = {
 
       return { id: created.id, name: created.name, email: created.email, role: input.role };
     }),
+
+  /**
+   * DCS reassigns an existing officer account's profile (Subject Officer ⇄
+   * Administrative Officer) after it was created — e.g. correcting a mistake
+   * made at creation time (APP_FLOW.md §1).
+   */
+  updateRole: dcsProcedure
+    .input(
+      z.object({
+        id: z.string().min(1),
+        role: z.enum(OFFICER_ROLES),
+      }),
+    )
+    .handler(async ({ context, input }) => {
+      const existing = await context.db.query.user.findFirst({ where: eq(user.id, input.id) });
+      if (!existing || !OFFICER_ROLES.includes(existing.role as (typeof OFFICER_ROLES)[number])) {
+        throw new ORPCError("NOT_FOUND", { message: "Officer account not found." });
+      }
+
+      await context.db.update(user).set({ role: input.role }).where(eq(user.id, input.id));
+
+      return { id: existing.id, name: existing.name, email: existing.email, role: input.role };
+    }),
 };

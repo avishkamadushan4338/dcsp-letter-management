@@ -1,4 +1,4 @@
-import { MIN_PASSWORD_LENGTH, OFFICER_ROLES, type OfficerRole, USER_ROLE_LABELS } from "@dcsp-letter-management/domain/roles";
+import { OFFICER_ROLES, type OfficerRole, USER_ROLE_LABELS } from "@dcsp-letter-management/domain/roles";
 import { Badge } from "@dcsp-letter-management/ui/components/badge";
 import { Button } from "@dcsp-letter-management/ui/components/button";
 import {
@@ -10,8 +10,7 @@ import {
   DialogTrigger,
 } from "@dcsp-letter-management/ui/components/dialog";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@dcsp-letter-management/ui/components/empty";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@dcsp-letter-management/ui/components/field";
-import { Input } from "@dcsp-letter-management/ui/components/input";
+import { Field, FieldGroup, FieldLabel } from "@dcsp-letter-management/ui/components/field";
 import {
   Select,
   SelectContent,
@@ -27,7 +26,6 @@ import {
   TableHeader,
   TableRow,
 } from "@dcsp-letter-management/ui/components/table";
-import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { UsersIcon } from "lucide-react";
@@ -42,8 +40,64 @@ export const Route = createFileRoute("/subject-officer/")({
   component: SubjectOfficersPage,
 });
 
-function required(message = "Required") {
-  return ({ value }: { value: unknown }) => (value ? undefined : { message });
+function EditSubjectOfficerRoleDialog({ id, name, role }: { id: string; name: string; role: OfficerRole }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState<OfficerRole>(role);
+
+  const updateMutation = useMutation(
+    orpc.subjectOfficers.updateRole.mutationOptions({
+      onSuccess: () => {
+        toast.success("Profile updated.");
+        queryClient.invalidateQueries({ queryKey: orpc.subjectOfficers.list.key() });
+        setOpen(false);
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setValue(role);
+      }}
+    >
+      <DialogTrigger render={<Button variant="ghost" size="sm" />}>Edit</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit {name}</DialogTitle>
+        </DialogHeader>
+        <FieldGroup>
+          <Field>
+            <FieldLabel>Profile</FieldLabel>
+            <Select value={value} onValueChange={(next) => setValue(next as OfficerRole)}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {OFFICER_ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {USER_ROLE_LABELS[r]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          <Button
+            type="button"
+            disabled={updateMutation.isPending}
+            onClick={() => updateMutation.mutate({ id, role: value })}
+          >
+            {updateMutation.isPending ? "Saving…" : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function SubjectOfficersPage() {
@@ -54,7 +108,6 @@ function SubjectOfficersPage() {
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-lg font-semibold">Subject Officers</h1>
-          <AddSubjectOfficerDialog />
         </div>
 
         {query.isPending ? (
@@ -76,6 +129,7 @@ function SubjectOfficersPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Profile</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -86,6 +140,13 @@ function SubjectOfficersPage() {
                   <TableCell>
                     <Badge variant="outline">{subjectOfficer.role ? USER_ROLE_LABELS[subjectOfficer.role] : "Subject Officer"}</Badge>
                   </TableCell>
+                  <TableCell>
+                    <EditSubjectOfficerRoleDialog
+                      id={subjectOfficer.id}
+                      name={subjectOfficer.name}
+                      role={(subjectOfficer.role as OfficerRole) ?? "subjectOfficer"}
+                    />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -93,116 +154,5 @@ function SubjectOfficersPage() {
         )}
       </div>
     </AppShell>
-  );
-}
-
-function AddSubjectOfficerDialog() {
-  const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-
-  const createMutation = useMutation(
-    orpc.subjectOfficers.create.mutationOptions({
-      onSuccess: () => {
-        toast.success("Subject Officer account created.");
-        queryClient.invalidateQueries({ queryKey: orpc.subjectOfficers.list.key() });
-        setOpen(false);
-        form.reset();
-      },
-      onError: (error) => toast.error(error.message),
-    }),
-  );
-
-  const form = useForm({
-    defaultValues: { name: "", email: "", password: "", role: "subjectOfficer" as OfficerRole },
-    onSubmit: async ({ value }) => {
-      await createMutation.mutateAsync(value);
-    },
-  });
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>Add Subject Officer</DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create an officer account</DialogTitle>
-        </DialogHeader>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            form.handleSubmit();
-          }}
-        >
-          <FieldGroup>
-            <form.Field name="role">
-              {(field) => (
-                <Field>
-                  <FieldLabel>Profile</FieldLabel>
-                  <Select value={field.state.value} onValueChange={(value) => field.handleChange(value as OfficerRole)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {OFFICER_ROLES.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {USER_ROLE_LABELS[role]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-              )}
-            </form.Field>
-
-            <form.Field name="name" validators={{ onChange: required("Name is required") }}>
-              {(field) => (
-                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
-                  <FieldLabel>Name</FieldLabel>
-                  <Input value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
-                  <FieldError errors={field.state.meta.errors} />
-                </Field>
-              )}
-            </form.Field>
-
-            <form.Field name="email" validators={{ onChange: required("Email is required") }}>
-              {(field) => (
-                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
-                  <FieldLabel>Email</FieldLabel>
-                  <Input type="email" value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
-                  <FieldError errors={field.state.meta.errors} />
-                </Field>
-              )}
-            </form.Field>
-
-            <form.Field
-              name="password"
-              validators={{
-                onChange: ({ value }) =>
-                  value.length >= MIN_PASSWORD_LENGTH ? undefined : { message: `Must be at least ${MIN_PASSWORD_LENGTH} characters` },
-              }}
-            >
-              {(field) => (
-                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
-                  <FieldLabel>Initial password</FieldLabel>
-                  <Input
-                    type="text"
-                    autoComplete="off"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                  />
-                  <FieldError errors={field.state.meta.errors} />
-                </Field>
-              )}
-            </form.Field>
-
-            <DialogFooter>
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Creating…" : "Create Account"}
-              </Button>
-            </DialogFooter>
-          </FieldGroup>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
