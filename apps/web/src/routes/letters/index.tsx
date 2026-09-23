@@ -39,6 +39,7 @@ import { RelevantOfficersField } from "@/components/letters/relevant-officers-fi
 import { LetterStatusBadge } from "@/components/letters/status-badge";
 import Loader from "@/components/loader";
 import { formatDate } from "@/lib/format";
+import { requireAuth } from "@/lib/require-auth";
 import { useUserRole } from "@/lib/role";
 import { orpc } from "@/utils/orpc";
 
@@ -48,6 +49,9 @@ const lettersSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/letters/")({
+  beforeLoad({ context: { queryClient }, location }) {
+    return requireAuth({ queryClient, href: location.href });
+  },
   validateSearch: lettersSearchSchema,
   component: LettersPage,
 });

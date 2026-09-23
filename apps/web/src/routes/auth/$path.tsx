@@ -1,9 +1,11 @@
 import { viewPaths } from "@better-auth-ui/core";
+import { ensureSession } from "@better-auth-ui/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LandmarkIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 
 import { Auth } from "@/components/auth/auth";
+import { authClient } from "@/lib/auth-client";
 
 const validAuthPathSegments = new Set(Object.values(viewPaths.auth));
 
@@ -42,13 +44,31 @@ type AuthSearch = {
   redirectTo?: string;
 };
 
+/**
+ * Views that only make sense for a visitor who isn't signed in yet. If an
+ * already-authenticated user lands here (e.g. a stale bookmark, or clicking
+ * "back" after signing in), send them straight to where they were headed
+ * instead of showing the sign-in form again.
+ */
+const UNAUTHENTICATED_ONLY_VIEWS: Record<string, true> = {
+  [viewPaths.auth.signIn]: true,
+  [viewPaths.auth.signUp]: true,
+};
+
 export const Route = createFileRoute("/auth/$path")({
   validateSearch: (search: Record<string, unknown>): AuthSearch => ({
     redirectTo: typeof search.redirectTo === "string" ? search.redirectTo : undefined,
   }),
-  beforeLoad({ params: { path } }) {
+  async beforeLoad({ params: { path }, context: { queryClient }, search }) {
     if (!validAuthPathSegments.has(path)) {
       throw redirect({ to: "/" });
+    }
+
+    if (UNAUTHENTICATED_ONLY_VIEWS[path]) {
+      const session = await ensureSession(queryClient, authClient);
+      if (session) {
+        throw redirect({ to: search.redirectTo ?? "/" });
+      }
     }
   },
   component: AuthPage,

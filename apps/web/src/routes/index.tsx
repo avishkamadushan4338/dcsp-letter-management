@@ -1,21 +1,12 @@
-import { useAuthenticate } from "@better-auth-ui/react";
-import { Navigate, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import Loader from "@/components/loader";
-import { authClient } from "@/lib/auth-client";
+import { requireAuth } from "@/lib/require-auth";
 import { parseUserRole } from "@/lib/role";
 
 export const Route = createFileRoute("/")({
-  component: HomeComponent,
+  async beforeLoad({ context: { queryClient }, location }) {
+    const session = await requireAuth({ queryClient, href: location.href });
+    const role = parseUserRole(session.user.role);
+    throw redirect({ to: role ? "/dashboard" : "/letters" });
+  },
 });
-
-function HomeComponent() {
-  const { data: session } = useAuthenticate(authClient);
-
-  if (!session) {
-    return <Loader />;
-  }
-
-  const role = parseUserRole(session.user.role);
-  return <Navigate to={role ? "/dashboard" : "/letters"} />;
-}

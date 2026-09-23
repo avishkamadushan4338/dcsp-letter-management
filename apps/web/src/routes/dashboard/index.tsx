@@ -23,10 +23,14 @@ import { LetterStatusBadge } from "@/components/letters/status-badge";
 import { LETTER_STATUS_BAR_CLASSES } from "@/components/letters/status-colors";
 import Loader from "@/components/loader";
 import { formatDate, formatRelativeToNow, startOfToday } from "@/lib/format";
+import { requireAuth } from "@/lib/require-auth";
 import { useUserRole } from "@/lib/role";
 import { orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/dashboard/")({
+  beforeLoad({ context: { queryClient }, location }) {
+    return requireAuth({ queryClient, href: location.href });
+  },
   component: DashboardPage,
 });
 
