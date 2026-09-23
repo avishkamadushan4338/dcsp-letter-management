@@ -38,10 +38,14 @@ import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 import Loader from "@/components/loader";
+import { requireAuth } from "@/lib/require-auth";
 import { useUserRole } from "@/lib/role";
 import { orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/officers/")({
+  beforeLoad({ context: { queryClient }, location }) {
+    return requireAuth({ queryClient, href: location.href });
+  },
   component: OfficersPage,
 });
 

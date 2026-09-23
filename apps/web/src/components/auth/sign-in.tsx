@@ -3,6 +3,7 @@
 import { authMutationKeys } from "@better-auth-ui/core"
 import { useAuth, useFetchOptions, useSignInEmail } from "@better-auth-ui/react"
 import { useIsMutating } from "@tanstack/react-query"
+import { getRouteApi } from "@tanstack/react-router"
 import { Eye, EyeOff } from "lucide-react"
 import { type SyntheticEvent, useState } from "react"
 
@@ -26,6 +27,8 @@ import { Label } from "@dcsp-letter-management/ui/components/label"
 import { Spinner } from "@dcsp-letter-management/ui/components/spinner"
 import { cn } from "@dcsp-letter-management/ui/lib/utils"
 import { ProviderButtons, type SocialLayout } from "./provider-buttons"
+
+const routeApi = getRouteApi("/auth/$path")
 
 export type SignInProps = {
   className?: string
@@ -60,6 +63,8 @@ export function SignIn({
 
   const { fetchOptions, resetFetchOptions } = useFetchOptions()
 
+  const { redirectTo: redirectToSearch } = routeApi.useSearch()
+
   const [password, setPassword] = useState("")
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
 
@@ -78,7 +83,7 @@ export function SignIn({
 
         resetFetchOptions()
       },
-      onSuccess: () => navigate({ to: redirectTo })
+      onSuccess: () => navigate({ to: redirectToSearch ?? redirectTo })
     }
   )
 

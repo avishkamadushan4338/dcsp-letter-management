@@ -32,10 +32,14 @@ import { AppShell } from "@/components/app-shell";
 import { DatePicker } from "@/components/date-field";
 import { RelevantOfficersField } from "@/components/letters/relevant-officers-field";
 import Loader from "@/components/loader";
+import { requireAuth } from "@/lib/require-auth";
 import { useUserRole } from "@/lib/role";
 import { orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/letters/new")({
+  beforeLoad({ context: { queryClient }, location }) {
+    return requireAuth({ queryClient, href: location.href });
+  },
   component: NewLetterPage,
 });
 
@@ -133,7 +137,7 @@ function DcsForm() {
         division: value.division,
         subject: value.subject,
         fromWhom: value.fromWhom,
-        receivedDate: new Date(value.receivedDate),
+        receivedDate: new Date(`${value.receivedDate}T00:00:00`),
         subjectOfficerId: value.subjectOfficerId,
         relevantOfficerIds: value.relevantOfficerIds,
       });
@@ -310,14 +314,14 @@ function SubjectOfficerForm() {
           division: value.division,
           subject: value.subject,
           fromWhom: value.fromWhom,
-          receivedDate: new Date(value.receivedDate),
+          receivedDate: new Date(`${value.receivedDate}T00:00:00`),
           relevantOfficerIds: value.relevantOfficerIds,
         });
       } else {
         await pendingMutation.mutateAsync({
           subject: value.subject,
           fromWhom: value.fromWhom,
-          receivedDate: new Date(value.receivedDate),
+          receivedDate: new Date(`${value.receivedDate}T00:00:00`),
         });
       }
     },

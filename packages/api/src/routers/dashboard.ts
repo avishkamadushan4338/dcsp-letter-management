@@ -12,10 +12,6 @@ type Db = ReturnType<typeof createDb>;
 /** A Relevant Officer is considered overdue once this long has passed since assignment without them marking it received. */
 const OVERDUE_AFTER_MS = 48 * 60 * 60 * 1000;
 
-function startOfUtcDay(date: Date) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
-
 /**
  * Every Relevant Officer assignment still unreceived `OVERDUE_AFTER_MS` after
  * it was made — oldest first. When `subjectOfficerId` is given, narrowed down
@@ -37,9 +33,10 @@ export const dashboardRouter = {
    * need, bundled into one round trip. Also powers Administrative Officer's
    * read-only oversight dashboard (same system-wide numbers, no actions).
    */
-  overview: dcsOrAdministrativeOfficerProcedure.handler(async ({ context }) => {
-    const now = new Date();
-    const startOfToday = startOfUtcDay(now);
+  overview: dcsOrAdministrativeOfficerProcedure
+    .input(z.object({ startOfToday: z.coerce.date() }))
+    .handler(async ({ context, input }) => {
+    const startOfToday = input.startOfToday;
 
     const [
       pendingReviewTotalRow,
@@ -123,10 +120,11 @@ export const dashboardRouter = {
    *  - `overdueRelevantOfficer` — of the letters they forwarded, how many
    *    Relevant Officer pickups are still outstanding 48h+ later.
    */
-  subjectOfficerOverview: officerProcedure.handler(async ({ context }) => {
+  subjectOfficerOverview: officerProcedure
+    .input(z.object({ startOfToday: z.coerce.date() }))
+    .handler(async ({ context, input }) => {
     const userId = context.session.user.id;
-    const now = new Date();
-    const startOfToday = startOfUtcDay(now);
+    const startOfToday = input.startOfToday;
     const mine = eq(letter.subjectOfficerId, userId);
 
     const [

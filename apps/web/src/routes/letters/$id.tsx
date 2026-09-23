@@ -31,10 +31,14 @@ import { RelevantOfficersField } from "@/components/letters/relevant-officers-fi
 import { LetterStatusBadge } from "@/components/letters/status-badge";
 import Loader from "@/components/loader";
 import { formatDateTime } from "@/lib/format";
+import { requireAuth } from "@/lib/require-auth";
 import { useUserRole } from "@/lib/role";
 import { orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/letters/$id")({
+  beforeLoad({ context: { queryClient }, location }) {
+    return requireAuth({ queryClient, href: location.href });
+  },
   component: LetterDetailPage,
 });
 

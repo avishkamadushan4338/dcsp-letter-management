@@ -9,9 +9,13 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import Loader from "@/components/loader";
 import { formatDate } from "@/lib/format";
+import { requireAuth } from "@/lib/require-auth";
 import { orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/print-numbers/")({
+  beforeLoad({ context: { queryClient }, location }) {
+    return requireAuth({ queryClient, href: location.href });
+  },
   component: PrintNumbersPage,
 });
 
