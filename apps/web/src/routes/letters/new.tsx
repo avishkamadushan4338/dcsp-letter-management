@@ -133,7 +133,7 @@ function DcsForm() {
         division: value.division,
         subject: value.subject,
         fromWhom: value.fromWhom,
-        receivedDate: new Date(value.receivedDate),
+        receivedDate: new Date(`${value.receivedDate}T00:00:00`),
         subjectOfficerId: value.subjectOfficerId,
         relevantOfficerIds: value.relevantOfficerIds,
       });
@@ -310,14 +310,14 @@ function SubjectOfficerForm() {
           division: value.division,
           subject: value.subject,
           fromWhom: value.fromWhom,
-          receivedDate: new Date(value.receivedDate),
+          receivedDate: new Date(`${value.receivedDate}T00:00:00`),
           relevantOfficerIds: value.relevantOfficerIds,
         });
       } else {
         await pendingMutation.mutateAsync({
           subject: value.subject,
           fromWhom: value.fromWhom,
-          receivedDate: new Date(value.receivedDate),
+          receivedDate: new Date(`${value.receivedDate}T00:00:00`),
         });
       }
     },

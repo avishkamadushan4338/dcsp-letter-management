@@ -22,7 +22,7 @@ import { DataTable } from "@/components/data-table";
 import { LetterStatusBadge } from "@/components/letters/status-badge";
 import { LETTER_STATUS_BAR_CLASSES } from "@/components/letters/status-colors";
 import Loader from "@/components/loader";
-import { formatDate, formatRelativeToNow } from "@/lib/format";
+import { formatDate, formatRelativeToNow, startOfToday } from "@/lib/format";
 import { useUserRole } from "@/lib/role";
 import { orpc } from "@/utils/orpc";
 
@@ -104,7 +104,7 @@ function DashboardPage() {
 
 function DcsDashboard() {
   const navigate = useNavigate();
-  const overview = useQuery(orpc.dashboard.overview.queryOptions());
+  const overview = useQuery(orpc.dashboard.overview.queryOptions({ input: { startOfToday: startOfToday() } }));
   const reviewQueue = useQuery(
     orpc.letters.list.queryOptions({
       input: { status: "pending_review", sortBy: "receivedDate", sortDir: "asc", pageSize: 8 },
@@ -324,7 +324,7 @@ const registerColumns: ColumnDef<RegisterItem>[] = [
  */
 function AdministrativeOfficerDashboard() {
   const navigate = useNavigate();
-  const overview = useQuery(orpc.dashboard.overview.queryOptions());
+  const overview = useQuery(orpc.dashboard.overview.queryOptions({ input: { startOfToday: startOfToday() } }));
   const register = useQuery(
     orpc.letters.list.queryOptions({
       input: { sortBy: "createdAt", sortDir: "desc", pageSize: 15 },
@@ -461,7 +461,9 @@ function AdministrativeOfficerDashboard() {
 
 function SubjectOfficerDashboard() {
   const navigate = useNavigate();
-  const overview = useQuery(orpc.dashboard.subjectOfficerOverview.queryOptions());
+  const overview = useQuery(
+    orpc.dashboard.subjectOfficerOverview.queryOptions({ input: { startOfToday: startOfToday() } }),
+  );
   const awaitingReceipt = useQuery(
     orpc.letters.list.queryOptions({
       input: { status: "sent_to_subject", sortBy: "receivedDate", sortDir: "asc", pageSize: 8 },

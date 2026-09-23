@@ -11,7 +11,7 @@ import {
 } from "@dcsp-letter-management/ui/components/select";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { formatDistanceStrict } from "date-fns";
+import { format, formatDistanceStrict } from "date-fns";
 import { useMemo, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
@@ -35,7 +35,7 @@ function monthEnd(date: Date) {
 }
 
 function toInputDate(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return format(date, "yyyy-MM-dd");
 }
 
 /** Elapsed time between two stage timestamps, or "—" while the later stage hasn't happened yet. */
@@ -58,8 +58,8 @@ function MonthlyReportPage() {
   const reportQuery = useQuery(
     orpc.dashboard.monthlyReport.queryOptions({
       input: {
-        dateFrom: dateFrom ? new Date(dateFrom) : undefined,
-        dateTo: dateTo ? new Date(dateTo) : undefined,
+        dateFrom: dateFrom ? new Date(`${dateFrom}T00:00:00`) : undefined,
+        dateTo: dateTo ? new Date(`${dateTo}T00:00:00`) : undefined,
         division: division === ALL ? undefined : division,
         officerId: officerId === ALL ? undefined : officerId,
       },
