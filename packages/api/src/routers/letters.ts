@@ -522,6 +522,16 @@ export const lettersRouter = {
     return updated;
   }),
 
+  /** DCS-only: permanently removes a letter (and its officer links/reassignment history) — for mistakes, not routine cleanup. */
+  deleteByDcs: dcsProcedure.input(z.object({ id: z.string() })).handler(async ({ context, input }) => {
+    const found = await context.db.query.letter.findFirst({ where: eq(letter.id, input.id) });
+    if (!found) {
+      throw new ORPCError("NOT_FOUND");
+    }
+    await context.db.delete(letter).where(eq(letter.id, input.id));
+    return { id: input.id };
+  }),
+
   /**
    * "Print Numbers" utility (APP_FLOW.md §6): every number issued in the last
    * 48 hours — not just the current calendar day, so a slip missed on the

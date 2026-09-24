@@ -42,6 +42,10 @@ function toInputDate(date: Date) {
   return format(date, "yyyy-MM-dd");
 }
 
+function toInputMonth(date: Date) {
+  return date.toISOString().slice(0, 7);
+}
+
 /** Elapsed time between two stage timestamps, or "—" while the later stage hasn't happened yet. */
 function duration(from: Date | string | number | null, to: Date | string | number | null) {
   if (!from || !to) return "—";
@@ -52,8 +56,21 @@ function MonthlyReportPage() {
   const now = new Date();
   const [dateFrom, setDateFrom] = useState(toInputDate(monthStart(now)));
   const [dateTo, setDateTo] = useState(toInputDate(monthEnd(now)));
+  const [month, setMonth] = useState(toInputMonth(now));
   const [division, setDivision] = useState<DivisionCode | typeof ALL>(ALL);
   const [officerId, setOfficerId] = useState<string>(ALL);
+
+  // Picking a month is shorthand for setting the date range to that whole
+  // month — the two fields stay in sync, but editing the from/to inputs
+  // directly still works for a custom range.
+  function applyMonth(value: string) {
+    setMonth(value);
+    if (!value) return;
+    const [year, monthIndex] = value.split("-").map(Number);
+    const picked = new Date(year!, monthIndex! - 1, 1);
+    setDateFrom(toInputDate(monthStart(picked)));
+    setDateTo(toInputDate(monthEnd(picked)));
+  }
 
   const officersQuery = useQuery(orpc.dashboard.monthlyReportOfficers.queryOptions());
   const officers = officersQuery.data ?? [];
@@ -96,9 +113,27 @@ function MonthlyReportPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="w-auto" />
+            <Input type="month" value={month} onChange={(event) => applyMonth(event.target.value)} className="w-auto" />
+            <span className="text-sm text-muted-foreground">or</span>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(event) => {
+                setDateFrom(event.target.value);
+                setMonth("");
+              }}
+              className="w-auto"
+            />
             <span className="text-sm text-muted-foreground">to</span>
-            <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="w-auto" />
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(event) => {
+                setDateTo(event.target.value);
+                setMonth("");
+              }}
+              className="w-auto"
+            />
 
             <Select
               value={division}

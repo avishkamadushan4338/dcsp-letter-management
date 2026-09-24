@@ -21,7 +21,7 @@ import {
 } from "@dcsp-letter-management/ui/components/table";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -85,7 +85,10 @@ function LetterDetail({ letter, role }: { letter: LetterDetail; role: UserRole |
               <CardTitle>{letter.referenceNumber}</CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">{letter.subject}</p>
             </div>
-            <LetterStatusBadge status={letter.status} />
+            <div className="flex items-center gap-2">
+              <LetterStatusBadge status={letter.status} />
+              {role === "dcs" && <DeleteLetterButton letter={letter} />}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-3 text-sm">
@@ -205,6 +208,50 @@ function LetterDetail({ letter, role }: { letter: LetterDetail; role: UserRole |
         </Card>
       )}
     </>
+  );
+}
+
+function DeleteLetterButton({ letter }: { letter: LetterDetail }) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+
+  const deleteMutation = useMutation(
+    orpc.letters.deleteByDcs.mutationOptions({
+      onSuccess: () => {
+        toast.success("Letter deleted.");
+        queryClient.invalidateQueries({ queryKey: orpc.letters.list.key() });
+        queryClient.invalidateQueries({ queryKey: orpc.letters.pendingReviewCount.key() });
+        navigate({ to: "/letters" });
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="destructive" size="sm" />}>Delete</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete this letter?</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          This permanently removes {letter.referenceNumber} and its officer links and history. This can&apos;t be undone.
+        </p>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={deleteMutation.isPending}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={deleteMutation.isPending}
+            onClick={() => deleteMutation.mutate({ id: letter.id })}
+          >
+            {deleteMutation.isPending ? "Deleting…" : "Delete"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
