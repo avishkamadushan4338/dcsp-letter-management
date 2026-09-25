@@ -9,6 +9,8 @@ import { dcsProcedure, officerProcedure, staffProcedure, subjectOfficerProcedure
 import { newId } from "../lib/ids";
 import { issueLetterLink } from "../lib/letter-links";
 import { previewNextLetterNumber, reserveNextLetterNumber } from "../lib/letter-number";
+import { returnLetterToSubjectOfficer } from "../lib/letter-return";
+import { resendToRelevantOfficer } from "../lib/relevant-officer-forward";
 
 /** How far back "Print Numbers" looks — wide enough that a slip missed on its issue day can still be printed the next day. */
 const PRINT_NUMBERS_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -118,7 +120,9 @@ async function requireOwnSubjectLetter(db: Parameters<typeof issueLetterLink>[0]
 /**
  * Used by `createByDcs` (APP_FLOW.md §3) — picks a division, target Subject
  * Officer, and Relevant Officer(s) up front, landing the letter at
- * `sent_to_subject` with both officer links emailed immediately.
+ * `sent_to_subject` with both officer links emailed immediately. Relevant
+ * Officers may come from any division, not just the letter's — DCS can
+ * assign any active officer to any letter.
  */
 async function createSentToSubjectLetter(
   db: Parameters<typeof issueLetterLink>[0],
@@ -132,9 +136,12 @@ async function createSentToSubjectLetter(
     createdByRole: "dcs";
   },
 ) {
+  // Relevant Officers aren't restricted to the letter's division here — DCS
+  // can assign any active officer from any division; they still must all
+  // share one division among themselves (enforced by `requireActiveOfficers`).
   const [subjectOfficer, { officers: relevantOfficers }] = await Promise.all([
     requireOfficerAccount(db, params.subjectOfficerId),
-    requireActiveOfficers(db, params.relevantOfficerIds, params.division),
+    requireActiveOfficers(db, params.relevantOfficerIds),
   ]);
 
   const { number, referenceNumber } = await reserveNextLetterNumber(db);
@@ -483,6 +490,37 @@ export const lettersRouter = {
 
     return updated;
   }),
+
+  /**
+   * "The Relevant Officer was absent today" loop (APP_FLOW.md §5): when a
+   * letter has several independent Relevant Officers, the Subject Officer
+   * picks which one specifically is absent — only that officer's track
+   * resets; the others keep progressing untouched, so the letter's overall
+   * status still reflects their work ("reserved" from the absent officer's
+   * side only). Subject Officer only — same view-only rule as
+   * `subjectMarkReceived`.
+   */
+  subjectReturn: subjectOfficerProcedure
+    .input(z.object({ id: z.string(), letterRelevantOfficerId: z.string() }))
+    .handler(async ({ context, input }) => {
+      await requireOwnSubjectLetter(context.db, input.id, context.session.user.id);
+      return returnLetterToSubjectOfficer(context.db, input.id, input.letterRelevantOfficerId);
+    }),
+
+  /**
+   * Sends the letter again to one specific Relevant Officer whose track was
+   * just reset by `subjectReturn` — the loop's second half, once they're
+   * available again or a different officer was picked instead (reassignment
+   * still goes through the officer's own emailed link, not here).
+   */
+  subjectResend: subjectOfficerProcedure
+    .input(z.object({ id: z.string(), letterRelevantOfficerId: z.string() }))
+    .handler(async ({ context, input }) => {
+      await requireOwnSubjectLetter(context.db, input.id, context.session.user.id);
+      await resendToRelevantOfficer(context.db, input.id, input.letterRelevantOfficerId);
+      const updated = await context.db.query.letter.findFirst({ where: eq(letter.id, input.id) });
+      return updated;
+    }),
 
   /**
    * Dashboard equivalent of the emailed link's "Send to DCS for Review"

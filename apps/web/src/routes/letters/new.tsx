@@ -109,7 +109,6 @@ function DcsForm() {
     ...orpc.subjectOfficers.list.queryOptions(),
     select: (data) => data.filter((one) => one.role === "subjectOfficer"),
   });
-  const [division, setDivision] = useState<DivisionCode | "">("");
 
   const createMutation = useMutation(
     orpc.letters.createByDcs.mutationOptions({
@@ -194,11 +193,7 @@ function DcsForm() {
               {(field) => (
                 <DivisionField
                   division={field.state.value}
-                  onDivisionChange={(value) => {
-                    field.handleChange(value);
-                    setDivision(value);
-                    form.setFieldValue("relevantOfficerIds", []);
-                  }}
+                  onDivisionChange={(value) => field.handleChange(value)}
                 />
               )}
             </form.Field>
@@ -257,15 +252,11 @@ function DcsForm() {
               )}
             </form.Field>
 
-            {division ? (
-              <form.Field name="relevantOfficerIds" validators={{ onChange: ({ value }) => (value.length > 0 ? undefined : { message: "Pick at least one Relevant Officer" }) }}>
-                {(field) => (
-                  <RelevantOfficersField division={division} value={field.state.value} onChange={field.handleChange} errors={field.state.meta.errors} />
-                )}
-              </form.Field>
-            ) : (
-              <FieldDescription>Pick a division to choose Relevant Officer(s).</FieldDescription>
-            )}
+            <form.Field name="relevantOfficerIds" validators={{ onChange: ({ value }) => (value.length > 0 ? undefined : { message: "Pick at least one Relevant Officer" }) }}>
+              {(field) => (
+                <RelevantOfficersField value={field.state.value} onChange={field.handleChange} errors={field.state.meta.errors} />
+              )}
+            </form.Field>
 
             <Button type="submit" disabled={createMutation.isPending}>
               {createMutation.isPending ? "Sending…" : "Create & Send"}

@@ -133,6 +133,13 @@ function LetterDetail({ letter, role }: { letter: LetterDetail; role: UserRole |
                   <p>Action taken: {assignment.actionTakenAt ? formatDateTime(assignment.actionTakenAt) : "Pending"}</p>
                   {assignment.actionNotes && <p className="text-foreground">{assignment.actionNotes}</p>}
                 </div>
+                {role === "subjectOfficer" &&
+                  (letter.status === "sent_to_relevant" || letter.status === "with_relevant_officer") &&
+                  !assignment.actionTakenAt && (
+                    <div className="mt-3">
+                      <RelevantOfficerReturnAction letterId={letter.id} assignment={assignment} />
+                    </div>
+                  )}
               </div>
             ))}
           </CardContent>
@@ -327,6 +334,56 @@ function SubjectOfficerActionCard({ letter }: { letter: LetterDetail }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Per-officer "was absent today" action, shown next to just that Relevant
+ * Officer's own row — when a letter has several, marking one absent leaves
+ * the others' progress untouched (APP_FLOW.md §5). One click both returns
+ * this officer's track to the Subject Officer and immediately re-sends it
+ * (to the same officer, once available again), so it reads as a single loop
+ * step rather than two.
+ */
+function RelevantOfficerReturnAction({
+  letterId,
+  assignment,
+}: {
+  letterId: string;
+  assignment: LetterDetail["relevantOfficers"][number];
+}) {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: orpc.letters.get.key({ input: { id: letterId } }) });
+    queryClient.invalidateQueries({ queryKey: orpc.letters.list.key() });
+  };
+
+  const returnMutation = useMutation(orpc.letters.subjectReturn.mutationOptions({ onError: (error) => toast.error(error.message) }));
+  const resendMutation = useMutation(
+    orpc.letters.subjectResend.mutationOptions({
+      onSuccess: () => {
+        toast.success(`Sent again to ${assignment.officer.name}.`);
+        invalidate();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  const isPending = returnMutation.isPending || resendMutation.isPending;
+
+  const handleAbsent = async () => {
+    await returnMutation.mutateAsync({ id: letterId, letterRelevantOfficerId: assignment.id });
+    await resendMutation.mutateAsync({ id: letterId, letterRelevantOfficerId: assignment.id });
+  };
+
+  if (assignment.receivedAt) {
+    return null;
+  }
+
+  return (
+    <Button variant="outline" size="sm" disabled={isPending} onClick={handleAbsent}>
+      {isPending ? "Returning…" : "Officer Absent — Resend"}
+    </Button>
   );
 }
 
