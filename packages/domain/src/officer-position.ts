@@ -11,6 +11,7 @@ export const OFFICER_POSITIONS = [
   "Accountant",
   "Financial Assistant",
   "Administrative Officer",
+  "Statician",
 ] as const;
 
 export type OfficerPosition = (typeof OFFICER_POSITIONS)[number];

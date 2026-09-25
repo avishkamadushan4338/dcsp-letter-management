@@ -169,6 +169,12 @@ const baseColumns: ColumnDef<LetterListItem>[] = [
   },
 ];
 
+const referenceNumberEndColumn: ColumnDef<LetterListItem> = {
+  id: "referenceNumberEnd",
+  header: () => <div className="text-right">Reference #</div>,
+  cell: ({ row }) => <div className="text-right">{row.original.referenceNumber}</div>,
+};
+
 function LettersPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -257,7 +263,10 @@ function LettersPage() {
     [role, markReceived, forward],
   );
 
-  const columns = useMemo<ColumnDef<LetterListItem>[]>(() => [...baseColumns, statusColumn], [statusColumn]);
+  const columns = useMemo<ColumnDef<LetterListItem>[]>(
+    () => [...baseColumns, statusColumn, referenceNumberEndColumn],
+    [statusColumn],
+  );
 
   const sortOption = SORT_OPTIONS.find((option) => option.value === sort) ?? SORT_OPTIONS[0];
 
