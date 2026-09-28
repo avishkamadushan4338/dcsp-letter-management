@@ -9,7 +9,7 @@ import { dcsProcedure, officerProcedure, staffProcedure, subjectOfficerProcedure
 import { newId } from "../lib/ids";
 import { issueLetterLink } from "../lib/letter-links";
 import { previewNextLetterNumber, reserveNextLetterNumber } from "../lib/letter-number";
-import { returnLetterToSubjectOfficer } from "../lib/letter-return";
+import { markRelevantOfficerAbsent } from "../lib/letter-return";
 import { resendToRelevantOfficer } from "../lib/relevant-officer-forward";
 
 /** How far back "Print Numbers" looks — wide enough that a slip missed on its issue day can still be printed the next day. */
@@ -492,26 +492,26 @@ export const lettersRouter = {
   }),
 
   /**
-   * "The Relevant Officer was absent today" loop (APP_FLOW.md §5): when a
-   * letter has several independent Relevant Officers, the Subject Officer
-   * picks which one specifically is absent — only that officer's track
-   * resets; the others keep progressing untouched, so the letter's overall
-   * status still reflects their work ("reserved" from the absent officer's
-   * side only). Subject Officer only — same view-only rule as
+   * "The Relevant Officer was absent today" loop (APP_FLOW.md §5), step one:
+   * when a letter has several independent Relevant Officers, the Subject
+   * Officer picks which one specifically is absent — only that officer's
+   * track is marked; the others keep progressing untouched, so the letter's
+   * overall status still reflects their work ("reserved" from the absent
+   * officer's side only). Subject Officer only — same view-only rule as
    * `subjectMarkReceived`.
    */
-  subjectReturn: subjectOfficerProcedure
+  subjectMarkAbsent: subjectOfficerProcedure
     .input(z.object({ id: z.string(), letterRelevantOfficerId: z.string() }))
     .handler(async ({ context, input }) => {
       await requireOwnSubjectLetter(context.db, input.id, context.session.user.id);
-      return returnLetterToSubjectOfficer(context.db, input.id, input.letterRelevantOfficerId);
+      return markRelevantOfficerAbsent(context.db, input.id, input.letterRelevantOfficerId);
     }),
 
   /**
-   * Sends the letter again to one specific Relevant Officer whose track was
-   * just reset by `subjectReturn` — the loop's second half, once they're
-   * available again or a different officer was picked instead (reassignment
-   * still goes through the officer's own emailed link, not here).
+   * Step two of the loop: an explicit "Send to Relevant Officer" for one
+   * specific officer just marked absent by `subjectMarkAbsent`, performed
+   * once they're available again or a different officer was picked instead
+   * (reassignment still goes through the officer's own emailed link, not here).
    */
   subjectResend: subjectOfficerProcedure
     .input(z.object({ id: z.string(), letterRelevantOfficerId: z.string() }))

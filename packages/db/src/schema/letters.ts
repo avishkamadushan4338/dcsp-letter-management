@@ -101,6 +101,12 @@ export const letterRelevantOfficer = sqliteTable(
     receivedAt: integer("received_at", { mode: "timestamp_ms" }),
     actionTakenAt: integer("action_taken_at", { mode: "timestamp_ms" }),
     actionNotes: text("action_notes"),
+    // Set by the Subject Officer's "Mark Absent" action when this officer
+    // wasn't available to receive the letter; cleared the moment the Subject
+    // Officer sends it out again ("Send to Relevant Officer"). Distinguishes
+    // "never yet received" from "was returned, waiting to be re-sent" — both
+    // otherwise look identical (receivedAt still null).
+    absentAt: integer("absent_at", { mode: "timestamp_ms" }),
     ...timestamps,
   },
   (table) => [

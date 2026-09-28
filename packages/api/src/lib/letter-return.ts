@@ -8,16 +8,18 @@ import { recomputeLetterStatus } from "./relevant-officer-status";
 type Db = ReturnType<typeof createDb>;
 
 /**
- * "The Relevant Officer was absent today" loop (APP_FLOW.md §5): the Subject
- * Officer pulls the letter back from one specific Relevant Officer's track —
- * when a letter has several, each is independent, so only the absent one's
- * progress resets (receivedAt/actionTakenAt/notes cleared, active link
- * invalidated); the others are untouched and keep progressing normally,
- * effectively "on hold" from this officer's perspective while the rest carry
- * on. The Subject Officer re-sends to just this officer once available (or
- * reassigns) via `resendToRelevantOfficer`, which can loop indefinitely.
+ * "The Relevant Officer was absent today" loop (APP_FLOW.md §5), step one —
+ * the Subject Officer marks one specific Relevant Officer's track as absent.
+ * When a letter has several, each is independent: only this one is marked
+ * (its active link invalidated), the others are untouched and keep
+ * progressing normally, effectively "reserved" from this officer's
+ * perspective while the rest carry on. Step two, once the officer's
+ * available again (or a different one is picked), is the Subject Officer
+ * explicitly sending it out again via `resendToRelevantOfficer` — a
+ * deliberate second action, not automatic, so the loop can repeat as many
+ * times as needed.
  */
-export async function returnLetterToSubjectOfficer(db: Db, letterId: string, letterRelevantOfficerId: string) {
+export async function markRelevantOfficerAbsent(db: Db, letterId: string, letterRelevantOfficerId: string) {
   const found = await db.query.letter.findFirst({ where: eq(letter.id, letterId) });
   if (!found) {
     throw new ORPCError("NOT_FOUND");
@@ -32,14 +34,14 @@ export async function returnLetterToSubjectOfficer(db: Db, letterId: string, let
   if (!assignment) {
     throw new ORPCError("NOT_FOUND");
   }
-  if (assignment.actionTakenAt) {
-    throw new ORPCError("CONFLICT", { message: "This officer already recorded an action on this letter." });
+  if (assignment.receivedAt) {
+    throw new ORPCError("CONFLICT", { message: "This officer already received this letter." });
+  }
+  if (assignment.absentAt) {
+    throw new ORPCError("CONFLICT", { message: "Already marked absent." });
   }
 
-  await db
-    .update(letterRelevantOfficer)
-    .set({ receivedAt: null, actionTakenAt: null, actionNotes: null })
-    .where(eq(letterRelevantOfficer.id, assignment.id));
+  await db.update(letterRelevantOfficer).set({ absentAt: new Date() }).where(eq(letterRelevantOfficer.id, assignment.id));
   await db
     .update(letterLink)
     .set({ invalidatedAt: new Date() })

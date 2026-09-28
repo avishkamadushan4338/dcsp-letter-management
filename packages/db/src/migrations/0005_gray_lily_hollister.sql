@@ -1,0 +1,1 @@
+ALTER TABLE `letter_relevant_officer` ADD `absent_at` integer;

@@ -125,12 +125,21 @@ function LetterDetail({ letter, role }: { letter: LetterDetail; role: UserRole |
                     {assignment.officer.name} <span className="font-normal text-muted-foreground">— {assignment.officer.position}</span>
                   </p>
                   <Badge variant={assignment.actionTakenAt ? "default" : assignment.receivedAt ? "secondary" : "outline"}>
-                    {assignment.actionTakenAt ? "Action taken" : assignment.receivedAt ? "Received" : "Awaiting receipt"}
+                    {assignment.actionTakenAt
+                      ? "Action taken"
+                      : assignment.receivedAt
+                        ? "Received"
+                        : assignment.absentAt
+                          ? "Absent"
+                          : "Awaiting receipt"}
                   </Badge>
                 </div>
                 <div className="mt-2 flex flex-col gap-1 text-muted-foreground">
                   <p>Received: {assignment.receivedAt ? formatDateTime(assignment.receivedAt) : "Pending"}</p>
                   <p>Action taken: {assignment.actionTakenAt ? formatDateTime(assignment.actionTakenAt) : "Pending"}</p>
+                  {assignment.absentAt && !assignment.actionTakenAt && (
+                    <p>Marked absent: {formatDateTime(assignment.absentAt)}</p>
+                  )}
                   {assignment.actionNotes && <p className="text-foreground">{assignment.actionNotes}</p>}
                 </div>
                 {role === "subjectOfficer" &&
@@ -340,10 +349,11 @@ function SubjectOfficerActionCard({ letter }: { letter: LetterDetail }) {
 /**
  * Per-officer "was absent today" action, shown next to just that Relevant
  * Officer's own row — when a letter has several, marking one absent leaves
- * the others' progress untouched (APP_FLOW.md §5). One click both returns
- * this officer's track to the Subject Officer and immediately re-sends it
- * (to the same officer, once available again), so it reads as a single loop
- * step rather than two.
+ * the others' progress untouched (APP_FLOW.md §5). Two explicit, separate
+ * steps: the Subject Officer first marks the officer absent, then — once
+ * they're available again, whenever that is — comes back and marks it sent
+ * to the Relevant Officer again. Not chained automatically, so each step
+ * needs its own click.
  */
 function RelevantOfficerReturnAction({
   letterId,
@@ -358,31 +368,51 @@ function RelevantOfficerReturnAction({
     queryClient.invalidateQueries({ queryKey: orpc.letters.list.key() });
   };
 
-  const returnMutation = useMutation(orpc.letters.subjectReturn.mutationOptions({ onError: (error) => toast.error(error.message) }));
-  const resendMutation = useMutation(
-    orpc.letters.subjectResend.mutationOptions({
+  const markAbsent = useMutation(
+    orpc.letters.subjectMarkAbsent.mutationOptions({
       onSuccess: () => {
-        toast.success(`Sent again to ${assignment.officer.name}.`);
+        toast.success(`Marked ${assignment.officer.name} as absent.`);
         invalidate();
       },
       onError: (error) => toast.error(error.message),
     }),
   );
 
-  const isPending = returnMutation.isPending || resendMutation.isPending;
-
-  const handleAbsent = async () => {
-    await returnMutation.mutateAsync({ id: letterId, letterRelevantOfficerId: assignment.id });
-    await resendMutation.mutateAsync({ id: letterId, letterRelevantOfficerId: assignment.id });
-  };
+  const resend = useMutation(
+    orpc.letters.subjectResend.mutationOptions({
+      onSuccess: () => {
+        toast.success(`Sent to ${assignment.officer.name} again.`);
+        invalidate();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
 
   if (assignment.receivedAt) {
     return null;
   }
 
+  if (assignment.absentAt) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={resend.isPending}
+        onClick={() => resend.mutate({ id: letterId, letterRelevantOfficerId: assignment.id })}
+      >
+        {resend.isPending ? "Sending…" : "Send to Relevant Officer"}
+      </Button>
+    );
+  }
+
   return (
-    <Button variant="outline" size="sm" disabled={isPending} onClick={handleAbsent}>
-      {isPending ? "Returning…" : "Officer Absent — Resend"}
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={markAbsent.isPending}
+      onClick={() => markAbsent.mutate({ id: letterId, letterRelevantOfficerId: assignment.id })}
+    >
+      {markAbsent.isPending ? "Marking…" : "Mark Absent"}
     </Button>
   );
 }

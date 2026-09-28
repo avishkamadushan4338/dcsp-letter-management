@@ -8,10 +8,12 @@ import { issueLetterLink } from "./letter-links";
 type Db = ReturnType<typeof createDb>;
 
 /**
- * Re-send to one specific Relevant Officer track after
- * `returnLetterToSubjectOfficer` reset it — either the same officer (back
- * from being absent) or a newly reassigned one; mints just that one fresh
- * link, leaving every other officer's track on this letter untouched.
+ * "The Relevant Officer was absent today" loop (APP_FLOW.md §5), step two —
+ * an explicit "Send to Relevant Officer" the Subject Officer performs after
+ * `markRelevantOfficerAbsent`, once the officer is available again (or a
+ * newly reassigned one takes over). Clears the absent marker and mints just
+ * that one fresh link, leaving every other officer's track on this letter
+ * untouched.
  */
 export async function resendToRelevantOfficer(db: Db, letterId: string, letterRelevantOfficerId: string) {
   const found = await db.query.letter.findFirst({ where: eq(letter.id, letterId) });
@@ -29,9 +31,11 @@ export async function resendToRelevantOfficer(db: Db, letterId: string, letterRe
   if (!assignment || assignment.letterId !== letterId) {
     throw new ORPCError("NOT_FOUND");
   }
-  if (assignment.receivedAt) {
-    throw new ORPCError("CONFLICT", { message: "This officer has already received this letter." });
+  if (!assignment.absentAt) {
+    throw new ORPCError("CONFLICT", { message: "This officer hasn't been marked absent." });
   }
+
+  await db.update(letterRelevantOfficer).set({ absentAt: null }).where(eq(letterRelevantOfficer.id, assignment.id));
 
   await issueLetterLink(db, {
     letterId: found.id,
