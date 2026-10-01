@@ -13,10 +13,13 @@ interface NavLink {
   label: string;
 }
 
+// DCS no longer originates or acts on letters at all (not even review) —
+// view/search/filter oversight, Print Numbers for history, and managing
+// Subject Officer accounts; deleting a letter is its only write action
+// (DeleteLetterButton on the letter detail page).
 const DCS_LINKS: NavLink[] = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/letters", label: "Letters" },
-  { to: "/letters/new", label: "New Letter" },
   { to: "/print-numbers", label: "Print Numbers" },
   { to: "/reports", label: "Monthly Report" },
   { to: "/subject-officer", label: "Subject Officers" },
@@ -56,7 +59,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const pendingReview = useQuery({
     ...orpc.letters.pendingReviewCount.queryOptions(),
-    enabled: role === "dcs",
+    enabled: role === "subjectOfficer",
   });
 
   return (
@@ -83,7 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               )}
             >
               {link.label}
-              {link.to === "/letters" && role === "dcs" && !!pendingReview.data && (
+              {link.to === "/letters" && role === "subjectOfficer" && !!pendingReview.data && (
                 <Badge variant="outline">{pendingReview.data}</Badge>
               )}
             </Link>

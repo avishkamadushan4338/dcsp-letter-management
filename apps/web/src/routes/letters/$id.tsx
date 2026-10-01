@@ -106,7 +106,7 @@ function LetterDetail({ letter, role }: { letter: LetterDetail; role: UserRole |
         </CardContent>
       </Card>
 
-      {role === "dcs" && letter.status === "pending_review" && <ReviewCard letter={letter} />}
+      {role === "subjectOfficer" && letter.status === "pending_review" && <ReviewCard letter={letter} />}
 
       {role === "subjectOfficer" && (letter.status === "sent_to_subject" || letter.status === "with_subject_officer") && (
         <SubjectOfficerActionCard letter={letter} />
@@ -422,15 +422,15 @@ function ReviewCard({ letter }: { letter: LetterDetail }) {
   const [open, setOpen] = useState(false);
 
   const reviewMutation = useMutation(
-    orpc.letters.review.mutationOptions({
+    orpc.letters.subjectReview.mutationOptions({
       onSuccess: () => {
-        toast.success("Letter reviewed and sent out.");
+        toast.success("Sent to the Relevant Officer.");
         queryClient.invalidateQueries({ queryKey: orpc.letters.get.key({ input: { id: letter.id } }) });
         queryClient.invalidateQueries({ queryKey: orpc.letters.list.key() });
         queryClient.invalidateQueries({ queryKey: orpc.letters.pendingReviewCount.key() });
         setOpen(false);
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error: Error) => toast.error(error.message),
     }),
   );
 
@@ -445,14 +445,14 @@ function ReviewCard({ letter }: { letter: LetterDetail }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Pending your review</CardTitle>
+        <CardTitle>Reserved — pick a Relevant Officer</CardTitle>
       </CardHeader>
       <CardContent>
         <p className="mb-3 text-sm text-muted-foreground">
-          The Subject Officer sent this without a Relevant Officer. Pick one or more to send it onward.
+          You reserved this letter without picking a Relevant Officer yet. Pick one or more to send it onward.
         </p>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button />}>Review</DialogTrigger>
+          <DialogTrigger render={<Button />}>Pick Relevant Officer</DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Assign Relevant Officer(s)</DialogTitle>

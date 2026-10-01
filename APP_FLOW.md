@@ -7,8 +7,8 @@ The app is the **Letter Management System** for the Southern Province Planning S
 
 ## 1. The people involved
 
-1. **DCS staff** — logs in with a username/password. Registers incoming letters, assigns officers, and has full oversight of every letter in the system. **Note on naming:** internally and in the API this role is called `dcs`, but the UI itself labels this person **"Admin"** wherever it addresses the reader directly (e.g. "Send to Admin for Review," "Awaiting Admin's review," a DCS-created letter shows "Added By: Admin (DCS)"). DCS staff and "Admin" are the same role.
-2. **Subject Officer** — acts as the middle-man between DCS and the Relevant Officer. There can be several Subject Officer accounts at once; DCS creates each account (there's no public sign-up) and picks which one a given letter goes to when registering it. Each Subject Officer can also log in to their own dashboard, scoped to only the letters routed to them, to originate letters directly (§4) — including ones that skip straight past their own dashboard to the Relevant Officer or to DCS.
+1. **DCS staff** — logs in with a username/password. **View-only oversight plus delete**: DCS can search/filter every letter, open any letter's full timeline, and delete a letter outright (for mistakes), but it never originates a letter and never assigns a Relevant Officer — that's entirely the Subject Officer's job now (§3). DCS also still creates Subject Officer accounts (§6), since there's no public sign-up. **Note on naming:** internally and in the API this role is called `dcs`, but the UI itself labels this person **"Admin"** wherever it addresses the reader directly (e.g. a letter shows "Added By: Admin (DCS)" if it predates this change). DCS staff and "Admin" are the same role.
+2. **Subject Officer** — originates every letter in the system (§3) and acts as the middle-man to the Relevant Officer. There can be several Subject Officer accounts at once; DCS creates each account (there's no public sign-up). Each Subject Officer logs into their own dashboard, scoped to only the letters they created, to register letters and route them on.
 3. **Administrative Officer** — a second, independent login profile alongside Subject Officer (its own account, not a filtered view of one), and DCS provisions its accounts the same way as Subject Officer's. It is **view-only**: it has a dashboard scoped to letters routed to it (same layout as Subject Officer's, §6), and can open any of those letters to see their full status and timeline, but it cannot act on them, cannot manage the Relevant Officer roster (§7), and cannot create letters at all — it has no "New Letter" option and no "Reserve" / "Send to Relevant Officer" / "Send to DCS for Review" buttons on the letters it can see.
 4. **Relevant Officer** — the person who actually does the work described in the letter and records what action was taken. There can be many Relevant Officers (one per letter, chosen per-division). In the Subject Officer's roster screen these are labeled generically as "Members"/"Officers" and their job title is captured as **"Position."**
 
@@ -29,48 +29,37 @@ A letter always has exactly one of these statuses, and it only ever moves forwar
 | `action_taken` | Relevant Officer has recorded their action notes. This is the end of the normal lifecycle. |
 | `closed` | Reserved for a fully wrapped-up letter — not currently reachable by any button in the app today. |
 
-## 3. Flow 1 — DCS creates the letter
+## 3. Flow — the Subject Officer creates the letter
 
-1. DCS opens "New Letter," picks a **division**. There are exactly three divisions in the system: `01` Development Division, `02` Administration Division, `03` Account Division. As soon as a division is picked, a reference number is generated for it in the form **`DCSP/<division-code>/<00001–99999>`** (e.g. `DCSP/01/00042`) — this number is reserved immediately, before the form is even submitted. Numbers count up per division and wrap back to `00001` after `99999`.
-2. DCS fills in subject, the sender (labeled **"From Whom"** in the UI), received date.
-3. DCS picks a **Relevant Officer** from that division's list.
-4. DCS picks which **Subject Officer** the letter goes to, from the list of Subject Officer accounts. If none exist yet, DCS cannot submit the letter — they're told to create one first.
-5. On submit:
-   - The letter is created.
-   - An email with a unique link goes out to **both** the Subject Officer and the Relevant Officer.
-   - Status becomes `sent_to_subject`.
-6. From here, the letter's progress depends entirely on the two officers clicking their links (see §5).
-
-## 4. Flow 2 — Subject Officer creates the letter themselves
-
-The Subject Officer logs into their own dashboard and can originate a letter without DCS starting it. When creating one, they must choose a routing option:
+DCS no longer originates letters. The Subject Officer logs into their own dashboard and registers every letter themselves, choosing one of two routing options:
 
 ### Option A — "Send Directly"
 They already know which Relevant Officer should get it.
+- The Subject Officer picks a **division**. There are exactly three divisions in the system: `01` Development Division, `02` Administration Division, `03` Account Division. As soon as a division is picked, a reference number is generated for it in the form **`DCSP/<division-code>/<00001–99999>`** (e.g. `DCSP/01/00042`) — this number is reserved immediately, before the form is even submitted. Numbers count up per division and wrap back to `00001` after `99999`.
+- They fill in subject, the sender (labeled **"From Whom"** in the UI), received date, and pick a **Relevant Officer** from that division's list.
 - The letter is created already marked as received by the Subject Officer and forwarded — it jumps straight to status `sent_to_relevant`.
 - The Relevant Officer is emailed their link immediately.
 - The Subject Officer's own "mark received / forward" steps are skipped entirely, since they authored it themselves.
 
-### Option B — "Send via DCS"
-They don't know who should handle it, or want DCS to decide.
-- The letter is created with status `pending_review` and **no** Relevant Officer assigned yet. No email is sent yet.
-- It now appears on **DCS's dashboard** in a "pending review" queue (DCS's dashboard shows a count of how many are waiting).
-- DCS opens it, picks a Relevant Officer, and submits the review.
-  - This can only happen once per letter — if it's already been reviewed, trying again is rejected.
-- Once reviewed: the letter is emailed to both the Subject Officer and Relevant Officer, and status becomes `sent_to_subject` — from here it behaves exactly like Flow 1.
+### Option B — "Reserve" (pick an officer later)
+They don't know yet who should handle it.
+- The letter is created with status `pending_review` ("Reserved") and **no** Relevant Officer or division assigned yet. No email is sent yet.
+- It appears in the Subject Officer's own dashboard as a count of reserved letters still waiting on them.
+- **DCS is not involved at any point in this path** — whenever the Subject Officer is ready, they open the letter themselves, pick a division's Relevant Officer(s) (which also sets the letter's division), and send it.
+  - This can only happen once per letter — if it's already been sent on, trying again is rejected.
+- Once sent: since the Subject Officer is already the one acting, the letter skips straight to status `sent_to_relevant` — same as Option A — rather than emailing them a link to their own letter.
 
-## 4a. Administrative Officer is view-only
+## 4. DCS and Administrative Officer are both view-only
 
-The Administrative Officer has no "New Letter" option — it cannot originate a letter at all — and cannot act on any letter either, even one routed to it. Its dashboard (§6) and each letter's detail page show it the same information DCS or the Subject Officer would see — status, timeline, division, Relevant Officer(s), reassignment history — but never the "Reserve" / "Send to Relevant Officer" / "Send to DCS for Review" buttons described in §5; those are Subject-Officer-account-only. (Letters created before this restriction was introduced may still show `createdByRole: administrativeOfficer` and the "Reserve" wording described in §5 — that history is preserved for display purposes, but no new letters can be created this way, and none of those buttons are actionable by the Administrative Officer.)
+Neither DCS nor the Administrative Officer has a "New Letter" option, and neither can act on any letter — not even a "Reserved" one, and not even to pick a Relevant Officer. Both dashboards (§6) and each letter's detail page show the same information — status, timeline, division, Relevant Officer(s), reassignment history — but never the "Send Directly" / "Reserve" / "Pick Relevant Officer" buttons described in §3 and §5; those are Subject-Officer-account-only. DCS's one write action anywhere in the system is deleting a letter outright (for mistakes — permanently removes it and its history). (Letters created before this restriction was introduced may still show `createdByRole: dcs` or `createdByRole: administrativeOfficer` and older wording like "Reserve" meaning something slightly different — that history is preserved for display purposes, but no new letters can be created or reviewed this way by either role.)
 
 ## 5. The link-driven handoff — what each officer can actually do
 
-Both officers reach the same kind of page — the only difference is which actions are shown, based on which role their link belongs to. The Subject Officer actions below are also available from a logged-in Subject Officer's own dashboard (§4a) — but only for a real Subject Officer account; the Administrative Officer never gets these buttons, even on a letter routed to it.
+Both officers reach the same kind of page — the only difference is which actions are shown, based on which role their link belongs to. The Subject Officer actions below are also available from a logged-in Subject Officer's own dashboard (§4) — but only for a real Subject Officer account; the Administrative Officer never gets these buttons, even on a letter routed to it. (This section mostly describes letters created before §3's Flow changed — a brand-new Option A letter skips straight to `sent_to_relevant` and never generates a Subject Officer link at all; a brand-new Option B "Reserved" letter is picked up entirely from the Subject Officer's own dashboard, §3, with no DCS step and no separate link either.)
 
 ### Subject Officer's link
-- **Mark Received** — available any time before it's already been done. Records the receipt time and moves status to `with_subject_officer`. Labeled **"Reserve"** instead when the letter was added by an Administrative Officer (§4a) — same action, same status transition, different wording.
-- **Send to Relevant Officer** — only enabled once "Mark Received"/"Reserve" has been done, and only when a Relevant Officer is already assigned. Moves status to `sent_to_relevant`. After this, the Subject Officer's link is spent — it can't be used again for further actions on this letter.
-- **Send to DCS for Review** — shown instead of "Send to Relevant Officer" when "Reserve" has been done but no Relevant Officer is assigned yet (only reachable via §4a Option B). Moves status to `pending_review` and spends the link the same way forwarding does.
+- **Mark Received** — available any time before it's already been done. Records the receipt time and moves status to `with_subject_officer`.
+- **Send to Relevant Officer** — only enabled once "Mark Received" has been done, and only when a Relevant Officer is already assigned. Moves status to `sent_to_relevant`. After this, the Subject Officer's link is spent — it can't be used again for further actions on this letter.
 
 ### Relevant Officer's link
 - **Mark Received** — only enabled once the Subject Officer has actually sent it (`sent_to_relevant`). Trying earlier is blocked. Moves status to `with_relevant_officer`.
@@ -87,36 +76,29 @@ Both officers reach the same kind of page — the only difference is which actio
 
 ## 6. What DCS sees and can do at any time
 
-DCS's dashboard is pure oversight over every letter, not a separate workflow:
+DCS's dashboard is pure oversight over every letter — it never originates, routes, or reviews one:
 
 - **Search & filter** — by letter number/subject/sender text, by division, by status.
-- **Pending Review count** — a running count of officer-originated letters waiting for DCS to assign a Relevant Officer.
 - **View details** — every letter can be opened to see its full timeline: when it was received by each officer, when it was forwarded, when action was taken, the action notes themselves, and the complete reassignment history if it was ever handed off.
-- **Review** button — only shown for letters awaiting review (Flow 2, Option B); lets DCS assign the Relevant Officer and push it forward.
-- **Subject Officers** — DCS creates new Subject Officer accounts (name, email, initial password) from the "Subject Officers" page; there's no public sign-up. Each letter picks its Subject Officer at creation time (§3), so adding a new account never affects letters already sent.
-- **Print Numbers** — a utility page listing every letter number issued in the *last 48 hours* (wide enough to catch a slip missed on its issue day), grouped for printing onto a physical log sheet (16 rows per page), showing letter number, division, and Relevant Officer. The caller checks off which of these numbers to actually print, since the window will often re-include ones already printed the day before. Available to DCS and the Subject Officer alike, each seeing only the numbers their own role issued.
+- **Delete** — DCS's only write action anywhere in the system; permanently removes a letter and its officer links/reassignment history, for mistakes rather than routine use.
+- **Subject Officers** — DCS creates new Subject Officer accounts (name, email, initial password) from the "Subject Officers" page; there's no public sign-up.
+- **Print Numbers** — a utility page listing every letter number issued in the *last 48 hours* (wide enough to catch a slip missed on its issue day), grouped for printing onto a physical log sheet (16 rows per page), showing letter number, division, and Relevant Officer. Since DCS no longer issues any letter numbers itself, this page is now effectively only useful to the Subject Officer, who still sees the numbers their own role issued.
 
 ## 7. Where "Relevant Officers" come from (the officer roster)
 
-Every dropdown that lets DCS or the Subject Officer pick a "Relevant Officer" is pulling from a shared roster of officers, filtered by division. That roster is managed entirely from the **Subject Officer's dashboard**, not by DCS:
+Every dropdown that lets the Subject Officer pick a "Relevant Officer" is pulling from a shared roster of officers, filtered by division. That roster is managed entirely from the **Subject Officer's dashboard**, not by DCS:
 
-- **Add an officer** — the Subject Officer fills in name, email, position/designation, and division. The officer immediately becomes selectable in every "Relevant Officer" dropdown for that division (DCS's New Letter form, the Subject Officer's own New Letter form, and the Relevant Officer's own "reassign to" list).
+- **Add an officer** — the Subject Officer fills in name, email, position/designation, and division. The officer immediately becomes selectable in every "Relevant Officer" dropdown for that division (the Subject Officer's own New Letter form, and the Relevant Officer's own "reassign to" list).
 - **Remove an officer** — the Subject Officer can remove an officer from the roster (with a confirmation prompt). This doesn't delete their history — any letters already assigned to them keep showing their name — it just makes them unselectable for *new* assignments going forward.
-- DCS has no page for adding/removing officers directly; DCS only ever *selects* from the roster the Subject Officer maintains, and separately creates Subject Officer accounts themselves (§6).
+- DCS has no page for adding/removing officers at all; DCS's only role here is separately creating Subject Officer accounts (§6).
 
 ## 8. Summary of the full happy-path lifecycle
 
-```
-DCS creates letter (picks division + relevant officer)
+```text
+Subject Officer creates letter — "Send Directly" (picks division + relevant officer)
         │
         ▼
-   [sent_to_subject]  ──► both officers emailed their links
-        │
-        ▼  (Subject Officer clicks "Mark Received")
-[with_subject_officer]
-        │
-        ▼  (Subject Officer clicks "Send to Relevant")
-  [sent_to_relevant]
+  [sent_to_relevant]  ──► Relevant Officer emailed their link
         │
         ▼  (Relevant Officer clicks "Mark Received")
 [with_relevant_officer]
@@ -127,6 +109,6 @@ DCS creates letter (picks division + relevant officer)
    [action_taken]  ── end of normal lifecycle
 ```
 
-The Subject-Officer-originated variant (Flow 2) either starts mid-way (Option A skips straight to `sent_to_relevant`) or adds one extra step at the front (Option B: `pending_review` → DCS reviews → same path as above).
+The "Reserve" variant (§3 Option B) adds one extra step at the front: `pending_review` → the Subject Officer comes back and picks a Relevant Officer themselves (no DCS step) → same `sent_to_relevant` path as above.
 
-Only DCS (Flow 1) and the Subject Officer (Flow 2) can originate a letter — the Administrative Officer has no "New Letter" option (§4a) and only ever acts on letters already routed to it, same as any Relevant Officer step in the diagram above.
+Only the Subject Officer can originate a letter. DCS and the Administrative Officer are both view-only (§4) — neither has a "New Letter" option, and neither ever acts on a letter, not even a "Reserved" one. DCS's only write action anywhere is deleting a letter.

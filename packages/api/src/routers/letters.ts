@@ -90,21 +90,6 @@ async function assignRelevantOfficers(
   }
 }
 
-/**
- * Confirms the chosen id is a real, still-existing Subject Officer account —
- * a letter's target officer must be Subject Officer specifically, not
- * Administrative Officer (APP_FLOW.md §1).
- */
-async function requireOfficerAccount(db: Parameters<typeof issueLetterLink>[0], subjectOfficerId: string) {
-  const found = await db.query.user.findFirst({
-    where: (userTable, { and: andCol, eq: eqCol }) => andCol(eqCol(userTable.id, subjectOfficerId), eqCol(userTable.role, "subjectOfficer")),
-  });
-  if (!found) {
-    throw new ORPCError("BAD_REQUEST", { message: "Pick a valid Subject Officer." });
-  }
-  return found;
-}
-
 /** Loads a letter and confirms the calling Subject Officer actually owns it (mirrors the `get` check). */
 async function requireOwnSubjectLetter(db: Parameters<typeof issueLetterLink>[0], letterId: string, subjectOfficerId: string) {
   const found = await db.query.letter.findFirst({ where: eq(letter.id, letterId) });
@@ -115,78 +100,6 @@ async function requireOwnSubjectLetter(db: Parameters<typeof issueLetterLink>[0]
     throw new ORPCError("FORBIDDEN");
   }
   return found;
-}
-
-/**
- * Used by `createByDcs` (APP_FLOW.md §3) — picks a division, target Subject
- * Officer, and Relevant Officer(s) up front, landing the letter at
- * `sent_to_subject` with both officer links emailed immediately. Relevant
- * Officers may come from any division, not just the letter's — DCS can
- * assign any active officer to any letter.
- */
-async function createSentToSubjectLetter(
-  db: Parameters<typeof issueLetterLink>[0],
-  params: {
-    division: DivisionCode;
-    subject: string;
-    fromWhom: string;
-    receivedDate: Date;
-    subjectOfficerId: string;
-    relevantOfficerIds: string[];
-    createdByRole: "dcs";
-  },
-) {
-  // Relevant Officers aren't restricted to the letter's division here — DCS
-  // can assign any active officer from any division; they still must all
-  // share one division among themselves (enforced by `requireActiveOfficers`).
-  const [subjectOfficer, { officers: relevantOfficers }] = await Promise.all([
-    requireOfficerAccount(db, params.subjectOfficerId),
-    requireActiveOfficers(db, params.relevantOfficerIds),
-  ]);
-
-  const { number, referenceNumber } = await reserveNextLetterNumber(db);
-
-  // `created` (APP_FLOW.md §2) is a passing state — the form submitting and
-  // it going out to both officers happen in the same request, so it's never
-  // actually persisted; the row is written directly as `sent_to_subject`.
-  const [created] = await db
-    .insert(letter)
-    .values({
-      id: newId(),
-      referenceNumber,
-      number,
-      division: params.division,
-      subject: params.subject,
-      fromWhom: params.fromWhom,
-      receivedDate: params.receivedDate,
-      status: "sent_to_subject",
-      createdByRole: params.createdByRole,
-      subjectOfficerId: subjectOfficer.id,
-    })
-    .returning();
-
-  if (!created) {
-    throw new ORPCError("INTERNAL_SERVER_ERROR");
-  }
-
-  await issueLetterLink(db, {
-    letterId: created.id,
-    role: "subjectOfficer",
-    to: subjectOfficer.email,
-    referenceNumber,
-    subject: created.subject,
-    fromWhom: created.fromWhom,
-    division: params.division,
-  });
-  await assignRelevantOfficers(db, relevantOfficers, {
-    letterId: created.id,
-    referenceNumber,
-    subject: created.subject,
-    fromWhom: created.fromWhom,
-    division: params.division,
-  });
-
-  return created;
 }
 
 export const lettersRouter = {
@@ -247,11 +160,12 @@ export const lettersRouter = {
       return { items, total: totalRows[0]?.total ?? 0, page: input.page, pageSize: input.pageSize };
     }),
 
-  pendingReviewCount: dcsProcedure.handler(async ({ context }) => {
+  /** Subject Officer's own count of letters they sent "via DCS" (now purely a self-service "Reserved" queue — APP_FLOW.md §4 Option B) still waiting for them to pick a Relevant Officer. */
+  pendingReviewCount: subjectOfficerProcedure.handler(async ({ context }) => {
     const [row] = await context.db
       .select({ total: count() })
       .from(letter)
-      .where(eq(letter.status, "pending_review"));
+      .where(and(eq(letter.status, "pending_review"), eq(letter.subjectOfficerId, context.session.user.id)));
     return row?.total ?? 0;
   }),
 
@@ -281,20 +195,6 @@ export const lettersRouter = {
     }
     return found;
   }),
-
-  /** Flow 1 (APP_FLOW.md §3): DCS creates the letter. */
-  createByDcs: dcsProcedure
-    .input(
-      z.object({
-        division: divisionCodeSchema,
-        subject: z.string().min(1),
-        fromWhom: z.string().min(1),
-        receivedDate: z.coerce.date(),
-        subjectOfficerId: z.string(),
-        relevantOfficerIds: z.array(z.string()).min(1),
-      }),
-    )
-    .handler(async ({ context, input }) => createSentToSubjectLetter(context.db, { ...input, createdByRole: "dcs" })),
 
   /** Flow 2, Option A (APP_FLOW.md §4): Subject Officer sends directly. */
   createBySubjectOfficerDirect: subjectOfficerProcedure
@@ -389,31 +289,32 @@ export const lettersRouter = {
    * the letter's division is then set to match theirs (they must all share
    * one — enforced by `requireActiveOfficers`).
    */
-  review: dcsProcedure
+  /**
+   * Flow 2, Option B's second half (APP_FLOW.md §4): the Subject Officer
+   * comes back to a letter they marked "Reserved" and picks its Relevant
+   * Officer(s) themselves — DCS has no part in this anymore. Since they're
+   * already acting as the Subject Officer, this skips straight to
+   * `sent_to_relevant` (same as "Send Directly"/Option A) instead of
+   * emailing them their own link.
+   */
+  subjectReview: subjectOfficerProcedure
     .input(z.object({ id: z.string(), relevantOfficerIds: z.array(z.string()).min(1) }))
     .handler(async ({ context, input }) => {
-      const found = await context.db.query.letter.findFirst({ where: eq(letter.id, input.id) });
-      if (!found) {
-        throw new ORPCError("NOT_FOUND");
-      }
+      const found = await requireOwnSubjectLetter(context.db, input.id, context.session.user.id);
       if (found.status !== "pending_review") {
-        throw new ORPCError("CONFLICT", { message: "This letter has already been reviewed." });
+        throw new ORPCError("CONFLICT", { message: "This letter isn't waiting to be reserved." });
       }
 
       const { officers: relevantOfficers, division } = await requireActiveOfficers(context.db, input.relevantOfficerIds);
-      const subjectOfficer = await context.db.query.user.findFirst({
-        where: (userTable, { eq: eqCol }) => eqCol(userTable.id, found.subjectOfficerId),
-      });
-      if (!subjectOfficer) {
-        throw new ORPCError("INTERNAL_SERVER_ERROR");
-      }
+      const now = new Date();
 
       const [updated] = await context.db
         .update(letter)
         .set({
           division,
-          reviewedAt: new Date(),
-          status: "sent_to_subject",
+          status: "sent_to_relevant",
+          subjectReceivedAt: now,
+          subjectForwardedAt: now,
         })
         .where(eq(letter.id, input.id))
         .returning();
@@ -422,15 +323,6 @@ export const lettersRouter = {
         throw new ORPCError("INTERNAL_SERVER_ERROR");
       }
 
-      await issueLetterLink(context.db, {
-        letterId: updated.id,
-        role: "subjectOfficer",
-        to: subjectOfficer.email,
-        referenceNumber: updated.referenceNumber,
-        subject: updated.subject,
-        fromWhom: updated.fromWhom,
-        division,
-      });
       await assignRelevantOfficers(context.db, relevantOfficers, {
         letterId: updated.id,
         referenceNumber: updated.referenceNumber,

@@ -1,7 +1,6 @@
 import { DIVISION_CODES, DIVISION_NAMES, type DivisionCode } from "@dcsp-letter-management/domain/division";
 import { Button } from "@dcsp-letter-management/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@dcsp-letter-management/ui/components/card";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@dcsp-letter-management/ui/components/empty";
 import {
   Field,
   FieldDescription,
@@ -25,7 +24,7 @@ import {
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
@@ -54,13 +53,7 @@ function NewLetterPage() {
     <AppShell>
       <div className="mx-auto max-w-lg">
         <h1 className="mb-4 text-lg font-semibold">New Letter</h1>
-        {isPending ? (
-          <Loader />
-        ) : role === "dcs" ? (
-          <DcsForm />
-        ) : role === "subjectOfficer" ? (
-          <SubjectOfficerForm />
-        ) : null}
+        {isPending ? <Loader /> : role === "subjectOfficer" ? <SubjectOfficerForm /> : null}
       </div>
     </AppShell>
   );
@@ -102,172 +95,6 @@ function ReferenceNumberPreview() {
   );
 }
 
-function DcsForm() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const subjectOfficers = useQuery({
-    ...orpc.subjectOfficers.list.queryOptions(),
-    select: (data) => data.filter((one) => one.role === "subjectOfficer"),
-  });
-
-  const createMutation = useMutation(
-    orpc.letters.createByDcs.mutationOptions({
-      onSuccess: (letter) => {
-        toast.success(`Letter ${letter.referenceNumber} sent to the Subject Officer and Relevant Officer.`);
-        queryClient.invalidateQueries({ queryKey: orpc.letters.list.key() });
-        navigate({ to: "/letters/$id", params: { id: letter.id } });
-      },
-      onError: (error) => toast.error(error.message),
-    }),
-  );
-
-  const form = useForm({
-    defaultValues: {
-      division: "" as DivisionCode | "",
-      subject: "",
-      fromWhom: "",
-      receivedDate: "",
-      subjectOfficerId: "",
-      relevantOfficerIds: [] as string[],
-    },
-    onSubmit: async ({ value }) => {
-      if (!value.division || !value.subjectOfficerId || value.relevantOfficerIds.length === 0) return;
-      await createMutation.mutateAsync({
-        division: value.division,
-        subject: value.subject,
-        fromWhom: value.fromWhom,
-        receivedDate: new Date(`${value.receivedDate}T00:00:00`),
-        subjectOfficerId: value.subjectOfficerId,
-        relevantOfficerIds: value.relevantOfficerIds,
-      });
-    },
-  });
-
-  useEffect(() => {
-    if (!subjectOfficers.data) return;
-    if (subjectOfficers.data.length === 1) {
-      const onlyId = subjectOfficers.data[0]!.id;
-      if (form.getFieldValue("subjectOfficerId") !== onlyId) {
-        form.setFieldValue("subjectOfficerId", onlyId);
-      }
-      return;
-    }
-    const current = form.getFieldValue("subjectOfficerId");
-    if (current && !subjectOfficers.data.some((one) => one.id === current)) {
-      form.setFieldValue("subjectOfficerId", "");
-    }
-  }, [subjectOfficers.data, form]);
-
-  if (subjectOfficers.isPending) return <Loader />;
-
-  if (!subjectOfficers.data || subjectOfficers.data.length === 0) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>No Subject Officers yet</EmptyTitle>
-          <EmptyDescription>
-            Create a Subject Officer account before creating letters. <br />
-            <Button className="mt-3" onClick={() => navigate({ to: "/subject-officer" })}>
-              Create Subject Officer
-            </Button>
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Register a letter</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            form.handleSubmit();
-          }}
-        >
-          <FieldGroup>
-            <form.Field name="division">
-              {(field) => (
-                <DivisionField
-                  division={field.state.value}
-                  onDivisionChange={(value) => field.handleChange(value)}
-                />
-              )}
-            </form.Field>
-            <ReferenceNumberPreview />
-
-            {subjectOfficers.data.length > 1 && (
-              <form.Field name="subjectOfficerId" validators={{ onChange: required("Pick a Subject Officer") }}>
-                {(field) => (
-                  <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
-                    <FieldLabel>Subject Officer</FieldLabel>
-                    <Select value={field.state.value} onValueChange={(value) => field.handleChange(value ?? "")}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Choose a Subject Officer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subjectOfficers.data.map((subjectOfficer) => (
-                          <SelectItem key={subjectOfficer.id} value={subjectOfficer.id} label={`${subjectOfficer.name} (${subjectOfficer.email})`}>
-                            {subjectOfficer.name} ({subjectOfficer.email})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FieldError errors={field.state.meta.errors} />
-                  </Field>
-                )}
-              </form.Field>
-            )}
-
-            <form.Field name="subject" validators={{ onChange: required("Subject is required") }}>
-              {(field) => (
-                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
-                  <FieldLabel>Subject</FieldLabel>
-                  <Input value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
-                  <FieldError errors={field.state.meta.errors} />
-                </Field>
-              )}
-            </form.Field>
-
-            <form.Field name="fromWhom" validators={{ onChange: required("From Whom is required") }}>
-              {(field) => (
-                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
-                  <FieldLabel>From Whom</FieldLabel>
-                  <Input value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} />
-                  <FieldError errors={field.state.meta.errors} />
-                </Field>
-              )}
-            </form.Field>
-
-            <form.Field name="receivedDate" validators={{ onChange: required("Received date is required") }}>
-              {(field) => (
-                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
-                  <FieldLabel>Received Date</FieldLabel>
-                  <DatePicker value={field.state.value} onChange={field.handleChange} onBlur={field.handleBlur} />
-                  <FieldError errors={field.state.meta.errors} />
-                </Field>
-              )}
-            </form.Field>
-
-            <form.Field name="relevantOfficerIds" validators={{ onChange: ({ value }) => (value.length > 0 ? undefined : { message: "Pick at least one Relevant Officer" }) }}>
-              {(field) => (
-                <RelevantOfficersField value={field.state.value} onChange={field.handleChange} errors={field.state.meta.errors} />
-              )}
-            </form.Field>
-
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Sending…" : "Create & Send"}
-            </Button>
-          </FieldGroup>
-        </form>
-      </CardContent>
-    </Card>
-  );
-}
-
 function SubjectOfficerForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -288,7 +115,7 @@ function SubjectOfficerForm() {
   const pendingMutation = useMutation(
     orpc.letters.createBySubjectOfficerPending.mutationOptions({
       onSuccess: (letter) => {
-        toast.success(`Letter ${letter.referenceNumber} sent to DCS for review.`);
+        toast.success(`Letter ${letter.referenceNumber} reserved — pick a Relevant Officer when you're ready.`);
         queryClient.invalidateQueries({ queryKey: orpc.letters.list.key() });
         navigate({ to: "/letters/$id", params: { id: letter.id } });
       },
@@ -329,7 +156,7 @@ function SubjectOfficerForm() {
         <Tabs value={option} onValueChange={(value) => setOption(value as "direct" | "pending")} className="mb-4">
           <TabsList>
             <TabsTrigger value="direct">Send Directly</TabsTrigger>
-            <TabsTrigger value="pending">Send via DCS</TabsTrigger>
+            <TabsTrigger value="pending">Reserve (pick officer later)</TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -401,7 +228,7 @@ function SubjectOfficerForm() {
               ))}
 
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Sending…" : option === "direct" ? "Create & Send" : "Send to DCS for Review"}
+              {isPending ? "Sending…" : option === "direct" ? "Create & Send" : "Reserve"}
             </Button>
           </FieldGroup>
         </form>

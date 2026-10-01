@@ -135,7 +135,7 @@ function DcsDashboard() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatTile
                 icon={ClipboardListIcon}
-                label="Letters to Review Today"
+                label="Reserved (No Officer Yet)"
                 value={stats?.reviewQueue.total ?? 0}
                 detail={`${stats?.reviewQueue.receivedToday ?? 0} received today`}
                 to="/letters"
@@ -197,7 +197,7 @@ function DcsDashboard() {
 
         <Card>
           <CardHeader className="flex items-center justify-between">
-            <CardTitle>Needs DCS Review</CardTitle>
+            <CardTitle>Reserved — No Relevant Officer Yet</CardTitle>
             <Link to="/letters" search={{ status: "pending_review" }} className="text-sm text-primary hover:underline">
               View all
             </Link>
@@ -208,8 +208,8 @@ function DcsDashboard() {
             ) : (reviewQueue.data?.items.length ?? 0) === 0 ? (
               <Empty className="p-6">
                 <EmptyHeader>
-                  <EmptyTitle>Nothing waiting on review</EmptyTitle>
-                  <EmptyDescription>Letters sent via DCS for review will appear here.</EmptyDescription>
+                  <EmptyTitle>Nothing reserved</EmptyTitle>
+                  <EmptyDescription>Letters the Subject Officer reserved without picking an officer yet will appear here.</EmptyDescription>
                 </EmptyHeader>
               </Empty>
             ) : (
@@ -291,16 +291,17 @@ type RegisterItem = {
 
 /**
  * How a letter reached the system, derived from what's already on it rather
- * than a separate stored field: DCS-registered letters always have a
- * division and Relevant Officer up front; an officer-originated one either
- * skipped straight past `pending_review` ("Sent Directly") or passed through
- * it ("Sent via DCS"), and once `reviewedAt` is set that review has happened.
+ * than a separate stored field. `createdByRole === "dcs"` only ever appears
+ * on letters from before DCS origination was removed — kept for historical
+ * display. Every current letter is Subject-Officer-originated, either
+ * skipping straight past `pending_review` ("Sent Directly") or passing
+ * through it as "Reserved" until the Subject Officer picks an officer.
  */
 function routingLabel(item: RegisterItem): string {
   if (item.createdByRole === "dcs") return "Registered by Admin (DCS)";
   const addedBy = USER_ROLE_LABELS[item.createdByRole];
-  if (item.reviewedAt) return `${addedBy} — Sent via DCS (Reviewed)`;
-  if (item.status === "pending_review") return `${addedBy} — Awaiting DCS Review`;
+  if (item.status === "pending_review") return `${addedBy} — Reserved, No Officer Yet`;
+  if (item.reviewedAt) return `${addedBy} — Reserved (Officer Assigned)`;
   return `${addedBy} — Sent Directly`;
 }
 
@@ -494,9 +495,9 @@ function SubjectOfficerDashboard() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatTile
                 icon={ClipboardListIcon}
-                label="Sent to DCS for Review"
+                label="Reserved — Pick an Officer"
                 value={stats?.pendingReview.total ?? 0}
-                detail="Awaiting DCS to assign an officer"
+                detail="Waiting on you to assign a Relevant Officer"
                 to="/letters"
                 search={{ status: "pending_review" }}
               />

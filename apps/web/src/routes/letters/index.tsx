@@ -82,23 +82,24 @@ type LetterListItem = {
 };
 
 /**
- * DCS's inline equivalent of the "Review" button on the letter detail page —
- * assign Relevant Officer(s) to a `pending_review` letter right from the
- * list, without opening it first.
+ * Subject Officer's inline equivalent of the "Pick Relevant Officer" button
+ * on the letter detail page — assign Relevant Officer(s) to their own
+ * "Reserved" (`pending_review`) letter right from the list, without opening
+ * it first.
  */
 function ReviewAction({ letterId }: { letterId: string }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
   const reviewMutation = useMutation(
-    orpc.letters.review.mutationOptions({
+    orpc.letters.subjectReview.mutationOptions({
       onSuccess: () => {
-        toast.success("Letter reviewed and sent out.");
+        toast.success("Sent to the Relevant Officer.");
         queryClient.invalidateQueries({ queryKey: orpc.letters.list.key() });
         queryClient.invalidateQueries({ queryKey: orpc.letters.pendingReviewCount.key() });
         setOpen(false);
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error: Error) => toast.error(error.message),
     }),
   );
 
@@ -112,7 +113,7 @@ function ReviewAction({ letterId }: { letterId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="sm" onClick={(event) => event.stopPropagation()} />}>Review</DialogTrigger>
+      <DialogTrigger render={<Button size="sm" onClick={(event) => event.stopPropagation()} />}>Pick Officer</DialogTrigger>
       <DialogContent onClick={(event) => event.stopPropagation()}>
         <DialogHeader>
           <DialogTitle>Assign Relevant Officer(s)</DialogTitle>
@@ -216,10 +217,10 @@ function LettersPage() {
       cell: ({ row }) => {
         const item = row.original;
 
-        // DCS sees the "Review" action here instead of the status badge for
-        // letters waiting on them to assign a Relevant Officer — same idea
-        // as the Subject Officer actions below, no need to open the letter first.
-        if (role === "dcs" && item.status === "pending_review") {
+        // Subject Officer sees the "Pick Officer" action here instead of the
+        // status badge for their own reserved letters still waiting on a
+        // Relevant Officer — no need to open the letter first.
+        if (role === "subjectOfficer" && item.status === "pending_review") {
           return <ReviewAction letterId={item.id} />;
         }
 
@@ -293,7 +294,7 @@ function LettersPage() {
       <div className="mx-auto flex max-w-5xl flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-lg font-semibold">Letters</h1>
-          {role !== "administrativeOfficer" && <Button onClick={() => navigate({ to: "/letters/new" })}>New Letter</Button>}
+          {role === "subjectOfficer" && <Button onClick={() => navigate({ to: "/letters/new" })}>New Letter</Button>}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -379,7 +380,7 @@ function LettersPage() {
               <EmptyDescription>
                 {search || division !== ALL || status !== ALL
                   ? "Try adjusting your search or filters."
-                  : role === "dcs"
+                  : role === "subjectOfficer"
                     ? "Register a new letter to get started."
                     : "Letters sent your way will show up here."}
               </EmptyDescription>
